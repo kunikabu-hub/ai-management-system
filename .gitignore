@@ -1,0 +1,72 @@
+# MCP Configuration (contains API tokens)
+.mcp.json
+~/.claude.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials
+*.json.key
+credentials.json
+token.json
+
+# Logs
+*.log
+
+# Environment variables (contains API keys)
+.env
+.env.local
+.env.*.local
+
+# Google Drive OAuth tokens
+~/.config/claude-code/gdrive/token.json
+~/.config/claude-code/gdrive/credentials.json
+
+# Temporary files
+/tmp/
+*.tmp
+temp/
+
+# Output files (keep structure, ignore large outputs)
+output/*.json
+output/slides/*
+output/*.pdf
+
+# ngrok
+ngrok.yml
+
+# Node modules (if any)
+node_modules/
