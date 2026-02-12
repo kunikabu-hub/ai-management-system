@@ -39,16 +39,71 @@ AIを活用したパーソナライズ絵本サービスを核とし、B2C・B2B
 ### 前提条件
 
 - **Python 3.9以上**
+- **Git**
 - **Google Drive API認証情報**
 - **Claude Code CLI**（推奨）
 
 ### セットアップ
 
-#### 1. リポジトリのクローン（既存の場合はスキップ）
+#### 1. リポジトリのクローン
+
+GitHubからこのリポジトリをクローンします。HTTPS/SSHのいずれかの方法を選択してください。
+
+##### 方法A: HTTPS（推奨・簡単）
 
 ```bash
 cd ~/Documents
-# 既にai-management-systemディレクトリがある場合はこのステップは不要
+git clone https://github.com/kunikabu-hub/ai-management-system.git
+cd ai-management-system
+```
+
+**Private リポジトリの場合**: GitHubのユーザー名とPersonal Access Tokenの入力を求められます。
+
+##### 方法B: SSH（より安全・パスワード不要）
+
+SSH接続を使用すると、毎回パスワードを入力する必要がなくなります。
+
+**SSH鍵の設定手順**:
+
+1. **SSH鍵を生成**（既に持っている場合はスキップ）:
+   ```bash
+   ssh-keygen -t ed25519 -C "your_email@example.com"
+   # Enterを3回押してデフォルト設定で作成
+   ```
+
+2. **SSH鍵をGitHubに登録**:
+   ```bash
+   # 公開鍵をクリップボードにコピー
+   cat ~/.ssh/id_ed25519.pub | pbcopy
+   ```
+
+   - https://github.com/settings/keys にアクセス
+   - "New SSH key" をクリック
+   - タイトルを入力（例: "MacBook Pro"）
+   - クリップボードの内容を貼り付け
+   - "Add SSH key" をクリック
+
+3. **SSH接続をテスト**:
+   ```bash
+   ssh -T git@github.com
+   # "Hi username! You've successfully authenticated..." と表示されればOK
+   ```
+
+4. **リポジトリをクローン**:
+   ```bash
+   cd ~/Documents
+   git clone git@github.com:kunikabu-hub/ai-management-system.git
+   cd ai-management-system
+   ```
+
+##### 既存のHTTPSをSSHに切り替える
+
+既にHTTPSでクローンしている場合、SSHに切り替えることができます：
+
+```bash
+cd ~/Documents/ai-management-system
+git remote set-url origin git@github.com:kunikabu-hub/ai-management-system.git
+git remote -v  # 確認
 ```
 
 #### 2. 依存関係のインストール
@@ -337,6 +392,15 @@ python3 tools/get_google_drive_token.py
 
 ## 📅 更新履歴
 
+- **2026-02-13**: 主要アップデート
+  - 8つのAPI連携完了（Notion、Gemini、OpenAI、Grok、GitHub、Figma、Playwright、Circleback）
+  - 4つのスキル実装（agent-memory、daily-schedule、trend-check、write-draft）
+  - えほんインク包括的戦略レポート作成（3,097行）
+  - Circleback議事録自動連携機能追加
+  - SETUP.md作成（他PCでのセットアップガイド）
+  - GitHubプライベートリポジトリに保存
+  - README.mdにクローン方法・SSH接続手順を追加
+
 - **2026-02-12**: 初版作成
   - Google Drive連携機能の実装
   - 事業概要分析の作成
@@ -351,4 +415,4 @@ python3 tools/get_google_drive_token.py
 
 ---
 
-**最終更新**: 2026年2月12日
+**最終更新**: 2026年2月13日
