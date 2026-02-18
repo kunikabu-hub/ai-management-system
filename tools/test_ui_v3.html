@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自分史絵本 - AIインタビュー</title>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #FDFBF7;
+            --bg-card: #FFFFFF;
+            --bg-secondary: #F5F2EE;
+            --text-primary: #2F3337;
+            --text-secondary: #6B6B6B;
+            --text-muted: #9B9B9B;
+            --accent: #8C8172;
+            --accent-light: #B5A89A;
+            --border: #E6E2DD;
+            --shadow: rgba(47, 51, 55, 0.08);
+            --gradient-overlay: linear-gradient(180deg, rgba(253, 251, 247, 0) 0%, rgba(253, 251, 247, 0.9) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            line-height: 1.8;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Shippori Mincho', serif;
+            font-weight: 600;
+        }
+
+        /* Vertical Line Decoration */
+        .vertical-line {
+            width: 1px;
+            height: 60px;
+            background: var(--accent-light);
+            margin: 2rem auto;
+            opacity: 0.5;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(253, 251, 247, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            transition: box-shadow 0.3s;
+        }
+
+        .header.scrolled {
+            box-shadow: 0 2px 16px var(--shadow);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-text {
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 0.05em;
+        }
+
+        .logo-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1.25rem;
+            border-radius: 24px;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .status-badge.connected {
+            background: rgba(140, 129, 114, 0.1);
+            color: var(--accent);
+            border-color: var(--accent-light);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(0.9); }
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 280px;
+            gap: 3rem;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding: 2rem 1rem;
+            }
+        }
+
+        /* Section Title */
+        .section-title {
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            position: relative;
+            padding-bottom: 1rem;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: var(--accent);
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 20px var(--shadow);
+            transition: all 0.3s;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.6s ease forwards;
+        }
+
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        /* Chat Container */
+        .chat-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .chat-wrapper {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .chat-header {
+            padding: 1.5rem 2rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-container {
+            min-height: 500px;
+            max-height: 600px;
+            overflow-y: auto;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            scroll-behavior: smooth;
+        }
+
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: var(--accent-light);
+            border-radius: 3px;
+        }
+
+        .message {
+            padding: 1.25rem 1.5rem;
+            border-radius: 8px;
+            max-width: 75%;
+            animation: slideIn 0.4s ease;
+            line-height: 1.8;
+            white-space: pre-wrap;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            background: var(--accent);
+            color: white;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        .message.ai {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border: 1px solid var(--border);
+        }
+
+        .message.system {
+            background: rgba(140, 129, 114, 0.08);
+            color: var(--text-secondary);
+            align-self: center;
+            font-size: 0.875rem;
+            border: 1px solid var(--accent-light);
+            max-width: 85%;
+            text-align: center;
+        }
+
+        /* Input Section */
+        .input-section {
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            min-width: 90px;
+            font-family: 'Shippori Mincho', serif;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(140, 129, 114, 0.1);
+        }
+
+        textarea {
+            width: 100%;
+            padding: 1rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+            transition: all 0.3s;
+            line-height: 1.6;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(140, 129, 114, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        button {
+            padding: 0.875rem 1.75rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .action-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 12px var(--shadow);
+        }
+
+        .action-title {
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1.25rem;
+            color: var(--text-primary);
+        }
+
+        .action-button {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            font-weight: 400;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .action-button:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        .action-button.primary {
+            background: var(--accent);
+            border: none;
+            color: white;
+            font-weight: 500;
+        }
+
+        .action-button.primary:hover {
+            background: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .icon {
+            font-size: 1.125rem;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 1rem;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Helper Text */
+        .helper-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-family: 'Shippori Mincho', serif;
+            letter-spacing: 0.05em;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            overflow: auto;
+            padding: 2rem;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 0.5rem;
+            line-height: 1;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .result-section {
+            margin-bottom: 2rem;
+        }
+
+        .result-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .result-label {
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .result-content {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-size: 0.875rem;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            color: var(--text-primary);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 0.75rem;
+        }
+
+        .result-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .result-item-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .result-item-value {
+            font-family: 'Shippori Mincho', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Results Quick Access */
+        .results-panel {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .results-panel.active {
+            display: block;
+        }
+
+        .result-button {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: linear-gradient(135deg, var(--accent-light), var(--accent));
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem;
+        }
+
+        .result-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(140, 129, 114, 0.3);
+        }
+
+        /* Link */
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        a:hover {
+            color: var(--text-primary);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            .logo-text {
+                font-size: 1.25rem;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .action-button {
+                font-size: 0.8125rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header" id="header">
+        <div class="header-content">
+            <div class="logo">
+                <div>
+                    <div class="logo-text">自分史絵本</div>
+                    <div class="logo-subtitle">AI INTERVIEW</div>
+                </div>
+            </div>
+            <div id="status" class="status-badge disconnected">
+                <div class="status-dot"></div>
+                <span>接続中</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Chat Section -->
+        <div class="chat-section">
+            <!-- Chat Messages -->
+            <div class="chat-wrapper">
+                <div class="chat-header">
+                    <h2 class="section-title" style="margin: 0; padding: 0;">インタビュー</h2>
+                    <button class="btn-secondary" onclick="clearChat()" style="padding: 0.5rem 1rem; font-size: 0.8125rem;">
+                        リセット
+                    </button>
+                </div>
+                <div class="chat-container" id="chatContainer">
+                    <div class="message system">
+                        Enter で送信、Shift+Enter で改行
+                    </div>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <div>AIが考え中です...</div>
+                </div>
+
+                <!-- Input Section -->
+                <div class="input-section">
+                    <div class="input-group">
+                        <label>ユーザーID</label>
+                        <input type="text" id="userId" value="user_001" />
+                    </div>
+                    <textarea id="message" placeholder="メッセージを入力してください" rows="3"></textarea>
+                    <p class="helper-text">あなたの人生の物語を、ゆっくりとお聞かせください</p>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="sendMessage()" id="sendBtn">
+                            <span>送信 →</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Quick Actions -->
+            <div class="action-card">
+                <div class="action-title">クイックアクション</div>
+                <div class="vertical-line" style="margin: 1rem auto;"></div>
+                <button class="action-button primary" onclick="completeStoryGeneration()">
+                    <span class="icon">▶</span>
+                    <span>物語を生成する</span>
+                </button>
+                <button class="action-button" onclick="getMaterials()">
+                    <span class="icon">📦</span>
+                    <span>素材を生成</span>
+                </button>
+                <button class="action-button" onclick="generateStory()">
+                    <span class="icon">📖</span>
+                    <span>自分史を生成</span>
+                </button>
+                <button class="action-button" onclick="generatePicturebook()">
+                    <span class="icon">📚</span>
+                    <span>絵本を生成</span>
+                </button>
+                <button class="action-button" onclick="generatePicturebookWithImages()">
+                    <span class="icon">🎨</span>
+                    <span>画像付き絵本</span>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="action-card results-panel" id="resultsPanel">
+                <div class="action-title">生成結果</div>
+                <div class="vertical-line" style="margin: 1rem auto;"></div>
+                <button class="result-button" onclick="showResult('materials')" id="viewMaterialsBtn" style="display:none;">
+                    <span>📦 素材を表示</span>
+                    <span>→</span>
+                </button>
+                <button class="result-button" onclick="showResult('story')" id="viewStoryBtn" style="display:none;">
+                    <span>📖 自分史を表示</span>
+                    <span>→</span>
+                </button>
+                <button class="result-button" onclick="showResult('picturebook')" id="viewPicturebookBtn" style="display:none;">
+                    <span>📚 絵本を表示</span>
+                    <span>→</span>
+                </button>
+            </div>
+
+            <!-- Links -->
+            <div class="action-card">
+                <div class="action-title">リンク</div>
+                <a href="http://localhost:8000/docs" target="_blank">
+                    <button class="action-button">
+                        <span class="icon">📖</span>
+                        <span>API ドキュメント</span>
+                    </button>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div class="modal" id="resultModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">結果表示</h2>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8000';
+        const chatContainer = document.getElementById('chatContainer');
+        const messageInput = document.getElementById('message');
+        const sendBtn = document.getElementById('sendBtn');
+        const loading = document.getElementById('loading');
+        const statusBadge = document.getElementById('status');
+        const header = document.getElementById('header');
+
+        let isComposing = false;
+        let justFinishedComposing = false;
+
+        // Store generated results
+        let generatedResults = {
+            materials: null,
+            story: null,
+            picturebook: null
+        };
+
+        // Scroll header shadow
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 10) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // 初期化
+        window.onload = async () => {
+            await checkHealth();
+            await startInterview();
+            messageInput.focus();
+        };
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${BASE_URL}/health`);
+                const data = await response.json();
+                statusBadge.className = 'status-badge connected';
+                statusBadge.innerHTML = '<div class="status-dot"></div><span>接続済み</span>';
+            } catch (error) {
+                statusBadge.className = 'status-badge disconnected';
+                statusBadge.innerHTML = '<div class="status-dot"></div><span>未接続</span>';
+            }
+        }
+
+        async function startInterview() {
+            const userId = document.getElementById('userId').value;
+            const hasHistory = sessionStorage.getItem(`chat_${userId}`);
+            if (hasHistory) return;
+
+            addMessage('system', 'インタビューを開始します');
+            setLoading(true);
+
+            try {
+                const response = await fetch(`${BASE_URL}/interview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        message: '自分史絵本を作りたいです',
+                        mode: 'interview',
+                        project_type: 'picturebook'
+                    })
+                });
+
+                const data = await response.json();
+                setLoading(false);
+                addMessage('ai', data.reply);
+                scrollToBottom();
+                sessionStorage.setItem(`chat_${userId}`, 'started');
+            } catch (error) {
+                setLoading(false);
+                addMessage('system', 'エラー: ' + error.message);
+            }
+        }
+
+        async function sendMessage() {
+            const userId = document.getElementById('userId').value;
+            const message = messageInput.value.trim();
+
+            if (!message) {
+                alert('メッセージを入力してください');
+                return;
+            }
+
+            addMessage('user', message);
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            setLoading(true);
+            scrollToBottom();
+
+            // 追加質問回答モードチェック
+            const awaitingAdditional = sessionStorage.getItem(`awaiting_additional_answers_${userId}`);
+            if (awaitingAdditional === 'true') {
+                // 追加質問への回答を収集
+                const questionsJson = sessionStorage.getItem(`additional_questions_${userId}`);
+                const questions = JSON.parse(questionsJson || '[]');
+
+                const answersJson = sessionStorage.getItem(`additional_answers_${userId}`);
+                const answers = JSON.parse(answersJson || '[]');
+
+                // 現在の質問番号
+                const currentQuestionIndex = answers.length;
+
+                if (currentQuestionIndex < questions.length) {
+                    // 回答を保存
+                    answers.push({
+                        question: questions[currentQuestionIndex],
+                        answer: message
+                    });
+                    sessionStorage.setItem(`additional_answers_${userId}`, JSON.stringify(answers));
+
+                    // 次の質問があるか確認
+                    if (answers.length < questions.length) {
+                        setLoading(false);
+                        addMessage('system', `回答を受け付けました（${answers.length}/${questions.length}）。次の質問にお答えください。`);
+                        scrollToBottom();
+                        return;
+                    } else {
+                        // すべての回答が揃った
+                        addMessage('system', 'すべての回答を受け付けました。materialsを更新しています...');
+
+                        try {
+                            // APIに送信
+                            const response = await fetch(`${BASE_URL}/answer_additional_questions/${userId}`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ answers: answers })
+                            });
+
+                            const data = await response.json();
+                            setLoading(false);
+
+                            if (data.success) {
+                                addMessage('ai', 'materialsを更新しました。再度「物語を生成する」ボタンをクリックして、物語を生成してください。');
+
+                                // セッションストレージをクリア
+                                sessionStorage.removeItem(`awaiting_additional_answers_${userId}`);
+                                sessionStorage.removeItem(`additional_questions_${userId}`);
+                                sessionStorage.removeItem(`additional_answers_${userId}`);
+                            } else {
+                                addMessage('system', 'materials更新に失敗しました');
+                            }
+                        } catch (error) {
+                            setLoading(false);
+                            addMessage('system', 'エラー: ' + error.message);
+                        }
+
+                        scrollToBottom();
+                        return;
+                    }
+                }
+            }
+
+            // 通常のインタビューモード
+            try {
+                const response = await fetch(`${BASE_URL}/interview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        message: message,
+                        mode: 'interview',
+                        project_type: 'picturebook'
+                    })
+                });
+
+                const data = await response.json();
+                setLoading(false);
+                addMessage('ai', data.reply);
+                scrollToBottom();
+            } catch (error) {
+                setLoading(false);
+                addMessage('system', 'エラー: ' + error.message);
+                scrollToBottom();
+            }
+        }
+
+        function addMessage(type, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = content;
+            chatContainer.appendChild(messageDiv);
+        }
+
+        function setLoading(show) {
+            loading.classList.toggle('active', show);
+            sendBtn.disabled = show;
+            messageInput.disabled = show;
+        }
+
+        function scrollToBottom() {
+            setTimeout(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 100);
+        }
+
+        async function clearChat() {
+            const userId = document.getElementById('userId').value;
+            const messages = chatContainer.querySelectorAll('.message:not(.system)');
+            messages.forEach(msg => msg.remove());
+            sessionStorage.removeItem(`chat_${userId}`);
+
+            try {
+                await fetch(`${BASE_URL}/session/${userId}`, { method: 'DELETE' });
+                addMessage('system', 'セッションをリセットしました');
+            } catch (error) {
+                addMessage('system', 'セッションのリセットに失敗しました');
+            }
+
+            await startInterview();
+        }
+
+        async function completeStoryGeneration() {
+            const userId = document.getElementById('userId').value;
+            const withImages = confirm('画像も生成しますか？\n\nはい: 絵本に画像を追加（7枚、約$0.28）\nいいえ: テキストのみ');
+
+            addMessage('system', `統合フローを開始します\n\n1. 素材生成\n2. 自分史生成\n3. 絵本生成${withImages ? '（画像付き）' : ''}\n\n完了まで1〜2分お待ちください`);
+            scrollToBottom();
+            setLoading(true);
+
+            try {
+                const response = await fetch(`${BASE_URL}/complete_story_generation/${userId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        generate_type: 'both',
+                        page_count: 24,
+                        with_images: withImages,
+                        max_images: 7
+                    })
+                });
+
+                const data = await response.json();
+                setLoading(false);
+
+                if (data.success) {
+                    const summary = `物語生成が完了しました\n\n生成結果：\n${data.steps_completed.map(step => `✓ ${step}`).join('\n')}\n\n素材:\n・タイムライン: ${data.materials_summary.timeline_count}件\n・人物: ${data.materials_summary.people_count}人\n・エピソード: ${data.materials_summary.episodes_count}件\n\n自分史:\n・タイトル: ${data.story_summary?.title || 'N/A'}\n・章数: ${data.story_summary?.chapters || 0}章\n\n絵本:\n・タイトル: ${data.picturebook_summary?.title || 'N/A'}\n・ページ数: ${data.picturebook_summary?.pages || 0}ページ${withImages ? `\n・生成画像: ${data.picturebook_summary?.images_generated || 0}枚` : ''}\n\n保存先: ${data.output_paths.session}\n\n👉 右側の「生成結果」パネルから詳細を表示できます`;
+                    addMessage('ai', summary);
+
+                    // Fetch and store full results
+                    await loadAllResults();
+                } else if (data.requires_additional_info) {
+                    // 追加質問が必要
+                    addMessage('system', `${data.message}\n\n不足している要素：\n${data.missing_elements.map(e => `・${e}`).join('\n')}`);
+
+                    // 追加質問を表示
+                    for (let i = 0; i < data.additional_questions.length; i++) {
+                        addMessage('ai', `【追加質問${i+1}/${data.additional_questions.length}】\n${data.additional_questions[i]}`);
+                    }
+
+                    addMessage('system', '上記の質問に順番にお答えください。すべて回答後、再度「物語を生成する」ボタンをクリックしてください。');
+
+                    // 追加質問を保存（後で回答を収集するため）
+                    sessionStorage.setItem(`additional_questions_${userId}`, JSON.stringify(data.additional_questions));
+                    sessionStorage.setItem(`awaiting_additional_answers_${userId}`, 'true');
+                } else {
+                    addMessage('system', '生成に失敗しました');
+                }
+                scrollToBottom();
+            } catch (error) {
+                setLoading(false);
+                addMessage('system', 'エラー: ' + error.message);
+                scrollToBottom();
+            }
+        }
+
+        async function getMaterials() {
+            const result = await generateContent('materials', '素材');
+            if (result) {
+                generatedResults.materials = result;
+                showResultButton('materials');
+            }
+        }
+
+        async function generateStory() {
+            const result = await generateContent('generate_story', '自分史');
+            if (result) {
+                generatedResults.story = result;
+                showResultButton('story');
+            }
+        }
+
+        async function generatePicturebook() {
+            const result = await generateContent('generate_picturebook', '絵本');
+            if (result) {
+                generatedResults.picturebook = result;
+                showResultButton('picturebook');
+            }
+        }
+
+        async function generatePicturebookWithImages() {
+            const userId = document.getElementById('userId').value;
+            const maxImages = 10;
+
+            addMessage('system', `絵本生成（画像付き）を開始します\n最大${maxImages}枚の画像を生成します（約$${(maxImages * 0.04).toFixed(2)}）`);
+            scrollToBottom();
+
+            try {
+                const response = await fetch(`${BASE_URL}/generate_picturebook_with_images/${userId}?max_images=${maxImages}`);
+                const data = await response.json();
+                const summary = `絵本生成が完了しました\n\n結果：\n・総ページ数: ${data.total_pages}ページ\n・生成画像数: ${data.images_generated}枚\n・推定コスト: $${data.cost_estimate_usd.toFixed(2)}\n\n生成された画像：\n${data.generated_images.map(img => `・Page ${img.page_number}: ${img.image_path}`).join('\n')}\n\n画像保存先: output/picturebook_images/${userId}/`;
+                addMessage('ai', summary);
+                scrollToBottom();
+            } catch (error) {
+                addMessage('system', 'エラー: ' + error.message);
+                scrollToBottom();
+            }
+        }
+
+        async function generateContent(endpoint, type) {
+            const userId = document.getElementById('userId').value;
+            addMessage('system', `${type}を生成中...`);
+            scrollToBottom();
+
+            try {
+                const response = await fetch(`${BASE_URL}/${endpoint}/${userId}`);
+                const data = await response.json();
+                addMessage('ai', `${type}生成完了\n\n👉 右側の「生成結果」パネルから詳細を表示できます`);
+                console.log('Full data:', data);
+                scrollToBottom();
+                return data;
+            } catch (error) {
+                addMessage('system', 'エラー: ' + error.message);
+                scrollToBottom();
+                return null;
+            }
+        }
+
+        async function loadAllResults() {
+            const userId = document.getElementById('userId').value;
+
+            try {
+                // Load materials
+                const materialsRes = await fetch(`${BASE_URL}/materials/${userId}`);
+                generatedResults.materials = await materialsRes.json();
+                showResultButton('materials');
+
+                // Load story
+                const storyRes = await fetch(`${BASE_URL}/generate_story/${userId}`);
+                generatedResults.story = await storyRes.json();
+                showResultButton('story');
+
+                // Load picturebook
+                const picturebookRes = await fetch(`${BASE_URL}/generate_picturebook/${userId}?page_count=24`);
+                generatedResults.picturebook = await picturebookRes.json();
+                showResultButton('picturebook');
+            } catch (error) {
+                console.error('Failed to load results:', error);
+            }
+        }
+
+        function showResultButton(type) {
+            const buttonMap = {
+                'materials': 'viewMaterialsBtn',
+                'story': 'viewStoryBtn',
+                'picturebook': 'viewPicturebookBtn'
+            };
+            const btnId = buttonMap[type];
+            if (btnId) {
+                document.getElementById(btnId).style.display = 'flex';
+                document.getElementById('resultsPanel').classList.add('active');
+            }
+        }
+
+        function showResult(type) {
+            const data = generatedResults[type];
+            if (!data) {
+                alert('結果が見つかりません。先に生成を実行してください。');
+                return;
+            }
+
+            const modal = document.getElementById('resultModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+
+            const titles = {
+                'materials': '📦 素材データ',
+                'story': '📖 自分史',
+                'picturebook': '📚 絵本'
+            };
+
+            modalTitle.textContent = titles[type];
+            modalBody.innerHTML = formatResult(type, data);
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('resultModal').classList.remove('active');
+        }
+
+        function formatResult(type, data) {
+            if (type === 'materials') {
+                return `
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">タイムライン</div>
+                            <div class="result-item-value">${data.timeline?.length || 0}件</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">人物</div>
+                            <div class="result-item-value">${data.people?.length || 0}人</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">エピソード</div>
+                            <div class="result-item-value">${data.episodes?.length || 0}件</div>
+                        </div>
+                    </div>
+
+                    ${data.timeline ? `
+                        <div class="result-section">
+                            <span class="result-label">タイムライン</span>
+                            <div class="result-content">${data.timeline.map(item =>
+                                `${item.year || '不明'}年: ${item.event || '不明'} (${item.age || '?'}歳)`
+                            ).join('\n')}</div>
+                        </div>
+                    ` : ''}
+
+                    ${data.people ? `
+                        <div class="result-section">
+                            <span class="result-label">登場人物</span>
+                            <div class="result-content">${data.people.map(p =>
+                                `${p.name || '不明'} (${p.relation || '?'})\n${p.description || '説明なし'}`
+                            ).join('\n\n')}</div>
+                        </div>
+                    ` : ''}
+
+                    ${data.episodes ? `
+                        <div class="result-section">
+                            <span class="result-label">エピソード</span>
+                            <div class="result-content">${data.episodes.map((ep, i) =>
+                                `【エピソード${i+1}】${ep.title || '無題'}\n${ep.summary || '内容なし'}`
+                            ).join('\n\n')}</div>
+                        </div>
+                    ` : ''}
+                `;
+            } else if (type === 'story') {
+                return `
+                    <div class="result-section">
+                        <span class="result-label">タイトル</span>
+                        <div class="result-content">${data.title || '無題'}</div>
+                    </div>
+
+                    <div class="result-section">
+                        <span class="result-label">テーマ</span>
+                        <div class="result-content">${data.theme || 'なし'}</div>
+                    </div>
+
+                    ${data.chapters ? `
+                        <div class="result-section">
+                            <span class="result-label">章構成 (${data.chapters.length}章)</span>
+                            ${data.chapters.map((ch, i) => `
+                                <div style="margin-top: 1.5rem;">
+                                    <div style="font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">
+                                        第${i+1}章: ${ch.title || '無題'}
+                                    </div>
+                                    <div class="result-content">${ch.content || '内容なし'}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                `;
+            } else if (type === 'picturebook') {
+                return `
+                    <div class="result-section">
+                        <span class="result-label">タイトル</span>
+                        <div class="result-content">${data.title || '無題'}</div>
+                    </div>
+
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-item-label">総ページ数</div>
+                            <div class="result-item-value">${data.total_pages || 0}</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-item-label">対象年齢</div>
+                            <div class="result-item-value">${data.target_age || '不明'}</div>
+                        </div>
+                    </div>
+
+                    ${data.pages ? `
+                        <div class="result-section">
+                            <span class="result-label">ページ一覧</span>
+                            ${data.pages.map((page, i) => `
+                                <div style="margin-top: 1.5rem;">
+                                    <div style="font-weight: 600; color: var(--accent); margin-bottom: 0.5rem;">
+                                        📄 Page ${page.page_number || i+1}
+                                    </div>
+                                    <div class="result-content"><strong>テキスト:</strong>\n${page.text || 'なし'}\n\n<strong>画像プロンプト:</strong>\n${page.illustration_prompt || 'なし'}\n\n<strong>スタイル:</strong>\n${page.illustration_style_note || 'なし'}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                `;
+            }
+            return '<div class="result-content">データがありません</div>';
+        }
+
+        // IME対応
+        messageInput.addEventListener('compositionstart', () => {
+            isComposing = true;
+            justFinishedComposing = false;
+        });
+
+        messageInput.addEventListener('compositionend', () => {
+            isComposing = false;
+            justFinishedComposing = true;
+            setTimeout(() => {
+                justFinishedComposing = false;
+            }, 100);
+        });
+
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !isComposing && !justFinishedComposing) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Close modal on outside click
+        document.getElementById('resultModal').addEventListener('click', (e) => {
+            if (e.target.id === 'resultModal') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
