@@ -18,9 +18,13 @@ from google.oauth2.credentials import Credentials
 # Google API のスコープ
 # Google Drive: フルアクセス
 # Google Calendar: 読み取り専用
+# Gmail: メール送信・管理
+# Tasks: タスク管理
 SCOPES = [
     'https://www.googleapis.com/auth/drive',
-    'https://www.googleapis.com/auth/calendar.readonly'
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/tasks'
 ]
 
 # 認証情報ファイルのパス
