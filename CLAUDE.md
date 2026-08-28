@@ -259,6 +259,8 @@ cat output/google_drive_files.json | python3 -c "import sys, json; files = json.
 | 拡張案件 | `6373195598694be4b0f8ce3f15710e48` | `1088a57c-da58-4508-8c66-6d9046fd67f8` | `204cdefb666f43f188be6bd7a63fca83` |
 | 印刷単価マスタ | `6401f9c98db846389e22eb20e417813b` | `7ab6b57d-b065-48a4-8d4e-177fcbd357e9` | `0136778486f64a9a97198cf3b0de21b2` |
 | 議事録 | `dbc2091471cb45e08cc0faf467fae73d` | `28299f3c-ed1f-460b-b05a-91650044f885` | 未確認 |
+| 企画・アイデア・課題 | `2c2af4d5c5984b949faf4a6584a8f970` | `709c83b0-c4c5-45c3-8b88-f2471af670c0` | Default |
+| SNS投稿キュー | `feb313fc24bd4eb8a80e8422680f9db6` | `410a0a40-fd05-4dd0-81c9-897c62d0b7dd` | Default |
 
 ビューURLの組み立て方: `https://app.notion.com/{database_id}?v={view_id}`
 

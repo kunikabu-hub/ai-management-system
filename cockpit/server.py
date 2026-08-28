@@ -57,6 +57,13 @@ ALLOWED = [
     "mcp__notion-eigyo__API-post-search",
     "mcp__notion-eigyo__API-post-page",
     "mcp__notion-eigyo__API-patch-page",
+    "Bash(curl:*)",          # Circleback REST API（/mm で使う）
+    # Circleback MCP（接続されている環境でのみ有効）
+    "mcp__ca592621-5cc7-4155-9500-964f4ce9c4e1__SearchMeetings",
+    "mcp__ca592621-5cc7-4155-9500-964f4ce9c4e1__ReadMeetings",
+    "mcp__ca592621-5cc7-4155-9500-964f4ce9c4e1__SearchActionItems",
+    "mcp__ca592621-5cc7-4155-9500-964f4ce9c4e1__SearchTranscripts",
+    "mcp__ca592621-5cc7-4155-9500-964f4ce9c4e1__FindProfiles",
 ]
 
 
@@ -116,6 +123,8 @@ def copy_to_drive(filenames, is_test):
         return [], f"Driveフォルダを作成できません（{e}）"
     ok = []
     for name in filenames:
+        if not name.lower().endswith((".pptx", ".pdf", ".docx")):
+            continue                      # 中間ファイル（json/py等）はDriveに出さない
         src = os.path.join(OUTPUT, name)
         if not os.path.exists(src):
             continue
@@ -137,9 +146,23 @@ DBS = {
     "clients": "dd401e3d-1706-4428-b713-48515ea0e916",   # クライアントマスタ
     "exts":    "63731955-9869-4be4-b0f8-ce3f15710e48",   # 拡張案件
     "prices":  "6401f9c9-8db8-4638-9e22-eb20e417813b",   # 印刷単価マスタ
+    "ideas":   "2c2af4d5-c598-4b94-9faf-4a6584a8f970",   # 企画・アイデア・課題
+    "sns":     "feb313fc-24bd-4eb8-a80e-8422680f9db6",   # SNS投稿キュー
 }
 _CACHE = {}
 CACHE_TTL = 180
+
+
+def circleback_key():
+    """Circleback の API キーを .mcp.json の _env から読む（gitignore 済みの場所）"""
+    for path in (os.path.join(ROOT, ".mcp.json"), os.path.expanduser("~/.claude/mcp.json")):
+        try:
+            k = (json.load(open(path, encoding="utf-8")).get("_env") or {}).get("CIRCLEBACK_API_KEY")
+            if k:
+                return k
+        except Exception:
+            continue
+    return None
 
 
 def _notion_token():
@@ -259,16 +282,23 @@ def pick_command(company):
     return "shodan"
 
 
-def run_job(job_id, company, context, skip_notion):
+def run_job(job_id, company, context, skip_notion, mode="proposal"):
     job = JOBS[job_id]
     before = snapshot_outputs()
 
-    cmd_name = pick_command(company)
-    prompt = f"/{cmd_name} {company}"
-    if context.strip():
-        prompt += " " + context.strip()
-    if skip_notion:
-        prompt += " ※STEP 6のNotion登録はスキップして"
+    if mode == "sns":
+        cmd_name = "sns"
+        prompt = "/sns " + (context.strip() or "note 3本 と X 5本")
+    elif mode == "mm":
+        cmd_name = "mm"
+        prompt = "/mm " + (context.strip() or "直近7日間")
+    else:
+        cmd_name = pick_command(company)
+        prompt = f"/{cmd_name} {company}"
+        if context.strip():
+            prompt += " " + context.strip()
+        if skip_notion:
+            prompt += " ※STEP 6のNotion登録はスキップして"
 
     cmd = ["claude", "-p", prompt,
            "--output-format", "stream-json", "--include-partial-messages", "--verbose"]
@@ -280,10 +310,17 @@ def run_job(job_id, company, context, skip_notion):
         job["q"].put({"kind": kind, "text": text})
 
     emit("meta", f"実行: {prompt}")
-    emit("meta", "既存顧客のため /teian を使います" if cmd_name == "teian" else "新規企業のため /shodan を使います")
+    if mode == "sns":
+        emit("meta", "企画DBと案件記録からSNS投稿の下書きを作ります（投稿はしません）")
+    elif mode == "mm":
+        emit("meta", "Circleback の商談記録を Notion に取り込みます")
+    else:
+        emit("meta", "既存顧客のため /teian を使います" if cmd_name == "teian" else "新規企業のため /shodan を使います")
     try:
         p = subprocess.Popen(cmd, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                             text=True, bufsize=1, env={**os.environ, "CLAUDE_CODE_ENTRYPOINT": "cockpit"})
+                             text=True, bufsize=1,
+                             env={**os.environ, "CLAUDE_CODE_ENTRYPOINT": "cockpit",
+                                  **({"CIRCLEBACK_API_KEY": circleback_key()} if circleback_key() else {})})
     except FileNotFoundError:
         job["state"] = "失敗"; emit("error", "claude コマンドが見つかりません"); job["q"].put(None); return
 
@@ -449,16 +486,17 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, "text/plain", "not found")
         n = int(self.headers.get("Content-Length", 0))
         payload = json.loads(self.rfile.read(n) or b"{}")
+        mode = (payload.get("mode") or "proposal").strip()
         company = (payload.get("company") or "").strip()
         context = (payload.get("context") or "").strip()
         skip = bool(payload.get("skip_notion"))
-        if not company:
+        if mode not in ("mm", "sns") and not company:
             return self._send(400, "application/json", json.dumps({"error": "企業名が空です"}))
         job_id = uuid.uuid4().hex[:12]
         with LOCK:
             JOBS[job_id] = {"q": queue.Queue(), "state": "実行中", "started": time.time(),
-                            "label": company, "files": [], "log": []}
-        threading.Thread(target=run_job, args=(job_id, company, context, skip), daemon=True).start()
+                            "label": company or ("SNS下書き" if mode == "sns" else "議事録の取り込み"), "files": [], "log": []}
+        threading.Thread(target=run_job, args=(job_id, company, context, skip, mode), daemon=True).start()
         return self._send(200, "application/json", json.dumps({"id": job_id}))
 
 

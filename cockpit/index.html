@@ -270,12 +270,13 @@ footer{margin-top:28px;padding-top:14px;border-top:.5px solid var(--sep);font-si
   <nav class="nav" id="nav">
     <span class="grp">見る</span>
     <button data-t="today" data-short="今日" aria-selected="true"><span class="lbl">今日</span><span class="c" id="c-today"></span></button>
-    <button data-t="pipe" data-short="案件" aria-selected="false"><span class="lbl">パイプライン</span><span class="c" id="c-pipe"></span></button>
+    <button data-t="pipe" data-short="案件" aria-selected="false"><span class="lbl">案件</span><span class="c" id="c-pipe"></span></button>
     <button data-t="client" data-short="顧客" aria-selected="false"><span class="lbl">顧客</span><span class="c" id="c-client"></span></button>
     <button data-t="ext" data-short="拡張" aria-selected="false"><span class="lbl">拡張案件</span><span class="c" id="c-ext"></span></button>
     <button data-t="price" data-short="単価" aria-selected="false"><span class="lbl">印刷単価</span><span class="c" id="c-price"></span></button>
     <span class="grp">つくる</span>
     <button data-t="make" data-short="つくる" aria-selected="false"><span class="lbl">提案書をつくる</span></button>
+    <button data-t="mm" data-short="取込" aria-selected="false"><span class="lbl">議事録を取り込む</span></button>
   </nav>
   <div class="foot">ÉHON INC.<br>ローカル実行 ／ 127.0.0.1</div>
 </aside>
@@ -294,6 +295,26 @@ footer{margin-top:28px;padding-top:14px;border-top:.5px solid var(--sep);font-si
   <section class="panel" id="p-client" hidden></section>
   <section class="panel" id="p-ext" hidden></section>
   <section class="panel" id="p-price" hidden></section>
+  <section class="panel" id="p-mm" hidden>
+    <div class="mk">
+      <div class="box"><div class="top"></div><div class="in">
+        <label for="mmPeriod">取り込む期間</label>
+        <input type="text" id="mmPeriod" placeholder="直近7日間" autocomplete="off">
+        <div class="hint" style="margin-top:6px">
+          「今週」「2026-08-25〜2026-08-28」「元気だ米」のような会議名でも指定できます。空欄なら直近7日間。
+        </div>
+        <button class="go" id="mmGo">Circlebackから取り込む</button>
+        <div class="hint">
+          議事録DBへ登録し、未登録の相手をクライアントマスタに「相談レベル」で追加、
+          関連する案件の次アクションに追記します。<br>
+          <b>同じ会議は重複登録しません。</b>自動生成した記録には「（自動生成）」が付きます。週次で内容を確認してください。
+        </div>
+      </div></div>
+      <div class="box"><div class="top" style="background:var(--navy)"></div><div class="in">
+        <div class="log" id="mmLog"><div class="r tool">待機中。期間を指定して開始します。</div></div>
+      </div></div>
+    </div>
+  </section>
   <section class="panel" id="p-make" hidden>
     <div class="mk">
       <div class="box"><div class="top"></div><div class="in">

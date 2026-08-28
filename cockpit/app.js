@@ -28,7 +28,7 @@ function buildDeals(rows){
     let d=map[key];
     if(!d){d={key,url:r.url,name:sp?base(r["提案名"]):(r["提案名"]||"（無題）"),client:r["クライアント"]||"",
       stage:r["ステージ"]||"",kind:r["見積種別"]||"",channel:r["チャネル"]||"",split:sp,parts:0,
-      amount:0,cost:0,hasCost:false,due:null,sent:null,resume:null,next:""};map[key]=d;order.push(d);}
+      amount:0,cost:0,hasCost:false,due:null,sent:null,resume:null,next:"",delivery:""};map[key]=d;order.push(d);}
     d.parts++;
     if(typeof r["金額"]==="number")d.amount+=r["金額"];
     if(r["印刷原価"]!=null||r["制作原価"]!=null){d.hasCost=true;d.cost+=(r["印刷原価"]||0)+(r["制作原価"]||0);}
@@ -36,6 +36,7 @@ function buildDeals(rows){
     if(due&&(!d.due||pd(due)<pd(d.due)))d.due=due;
     if(r["date:送付日:start"])d.sent=r["date:送付日:start"];
     if(r["date:再開予定:start"])d.resume=r["date:再開予定:start"];
+    if(r["納品状況"])d.delivery=r["納品状況"];
     if((r["次アクション"]||"").length>d.next.length)d.next=r["次アクション"]||"";
   });
   return order;
@@ -115,6 +116,13 @@ function renderToday(){
   o+=sec("計測の穴：送付日が未入力",t.funnel.length,"送付日がないとファネルが測れない。",
     t.funnel.length?`<div class="rows">${t.funnel.map(d=>row({sv:"warn",url:d.url,title:d.name,
       meta:`<span class="pill">送付済</span><span>${esc(d.client)}</span>`,side:`<span class="due">送付日を入れる</span>`})).join("")}</div>`:none());
+  const stuck=D.deals.filter(d=>d.stage==="受注"&&(d.delivery==="制作中"||d.delivery==="未着手"))
+    .map(d=>({d,days:dd(d.sent||d.due)!=null?-dd(d.sent||d.due):null}));
+  o+=sec("納品が動いていない受注案件",stuck.length,
+    "受注したまま制作が進んでいない案件。売上は立っているが納品が終わっていない。",
+    stuck.length?`<div class="rows">${stuck.map(x=>row({sv:x.d.delivery==="未着手"?"crit":"warn",url:x.d.url,title:x.d.name,note:x.d.next,
+      meta:`<span class="pill ${x.d.delivery==="未着手"?"gold":"navy"}">${esc(x.d.delivery)}</span><span>${esc(x.d.client)}</span>`,
+      side:(x.d.amount?`<span class="amt">${yen(x.d.amount)}</span>`:"")+`<span class="due">受注済</span>`})).join("")}</div>`:none());
   o+=sec(`放置：直近請求から${IDLE}日以上`,t.idle.length,"会議ではなく直近請求日で見る。納品が回っている顧客ほど会議をしないため。",
     t.idle.length?`<div class="rows">${t.idle.map(x=>row({sv:x.days>=180?"crit":"warn",url:x.c.url,title:x.c["企業名"],note:x.c["再開条件"]||x.c["備考"],
       meta:`<span class="pill">${esc(x.c["ステータス"])}</span><span>${esc(x.c["相手区分"]||"")}</span>`,
@@ -137,15 +145,16 @@ function renderPipe(){
   const seg=`<div class="segwrap">${[["active","進行中"],["won","受注"],["cold","保留・失注"],["all","全部"]]
     .map(x=>`<button class="use" data-pf="${x[0]}" style="${pf===x[0]?"background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:590":""}">${x[1]}</button>`).join("")}</div>`;
   o+=sec("案件一覧",sh.length,"着手金と残金の2行は1案件として統合。粗利は原価が入っている案件のみ実額。",
-    seg+`<div class="tw"><table><thead><tr><th>提案</th><th>クライアント</th><th>ステージ</th><th class="n">金額</th><th class="n">粗利</th><th class="n">期日</th></tr></thead><tbody>${
+    seg+`<div class="tw"><table><thead><tr><th>提案</th><th>クライアント</th><th>ステージ</th><th class="n">金額</th><th class="n">粗利</th><th>納品状況</th><th class="n">期日</th></tr></thead><tbody>${
     sh.map(d=>{const n=dd(d.due),g=d.hasCost?d.amount-d.cost:null;
       return `<tr><td><a class="nm" href="${esc(d.url)}" target="_blank">${esc(d.name)}</a>${d.split?` <span class="pill">分割${d.parts}</span>`:""}
         <div class="sub">${esc(flat(d.next).slice(0,80))}</div></td>
         <td>${esc(d.client)}<div class="sub">${esc(d.channel)}</div></td>
         <td><span class="pill">${esc(d.stage)}</span></td><td class="n">${yen(d.amount)}</td>
         <td class="n">${g!=null?yen(g)+`<div class="sub">${d.amount?(g/d.amount*100).toFixed(1)+"%":""}</div>`:'<span class="sub">原価未入力</span>'}</td>
+        <td>${d.stage==="受注"?(d.delivery?`<span class="pill ${d.delivery==="納品済"?"ok":d.delivery==="継続納品中"?"wine":"navy"}">${esc(d.delivery)}</span>`:'<span class="pill gold">未記入</span>'):'<span class="sub">—</span>'}</td>
         <td class="n">${d.due?md(d.due)+`<div class="sub">${n<0?(-n)+"日超過":"あと"+n+"日"}</div>`:'<span class="sub">—</span>'}</td></tr>`;}).join("")
-    ||'<tr><td colspan="6" class="sub">該当なし</td></tr>'}</tbody></table></div>`);
+    ||'<tr><td colspan="7" class="sub">該当なし</td></tr>'}</tbody></table></div>`);
   return o;
 }
 
@@ -239,7 +248,7 @@ function renderKPI(){
   const need=D.t.overdue.length+D.t.soon.length;
   const cards=[
     {l:"アクティブ案件",v:act.length,u:"件",n:"作成中・送付済・商談中"},
-    {l:"パイプライン総額",v:man(pipe),u:"万円",n:`受注済 ${man(won)}万円は含まない`},
+    {l:"進行中の総額",v:man(pipe),u:"万円",n:`受注済 ${man(won)}万円は含まない`},
     {l:"粗利見込み（参考）",v:man(pipe*0.67),u:"万円",n:"限界利益率67%の仮置き。実額ではない"},
     {l:"保留＝来期見込み",v:man(ha),u:"万円",n:`${hold.length}件。失注ではなく時期の問題`+(D.t.resuming.length?` ／ 再開時期 ${D.t.resuming.length}件`:"")},
     {l:"要対応",v:need,u:"件",n:`期日超過 ${D.t.overdue.length}件・3日以内 ${D.t.soon.length}件`,c:D.t.overdue.length?"crit":""}];
@@ -279,7 +288,7 @@ async function load(force){
   }catch(e){$("dot").className="dot err";$("fresh").textContent="取得失敗";}
 }
 
-const TABS=["today","pipe","client","ext","price","make"];
+const TABS=["today","pipe","client","ext","price","make","mm"];
 function go(t){
   tab=t;
   document.body.dataset.tab=t;      /* モバイルでKPIの出し分けに使う */
@@ -348,6 +357,27 @@ $("go").addEventListener("click",async()=>{
   es.onerror=()=>{es.close();done();};
 });
 function done(){$("go").disabled=false;$("go").textContent="調査して提案書を作る";}
+
+/* ---- 議事録の取り込み ---- */
+function addTo(el,kind,text){const d=document.createElement("div");d.className="r "+kind;
+  if(kind==="tool"){const i=text.indexOf("  ");d.innerHTML="<b>"+esc(i>0?text.slice(0,i):text)+"</b> "+esc(i>0?text.slice(i):"");}
+  else d.textContent=text;
+  el.appendChild(d);el.scrollTop=el.scrollHeight;}
+$("mmGo").addEventListener("click",async()=>{
+  const el=$("mmLog");
+  $("mmGo").disabled=true;$("mmGo").textContent="取り込み中…";el.innerHTML="";
+  const res=await fetch("/run",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({mode:"mm",context:$("mmPeriod").value})});
+  const j=await res.json();
+  if(j.error){addTo(el,"error",j.error);mmDone();return;}
+  const es=new EventSource("/stream/"+j.id);
+  es.onmessage=ev=>{const d=JSON.parse(ev.data);
+    if(d.kind==="end"){addTo(el,"meta","— "+d.text+" —");es.close();mmDone();load(true);return;}
+    if(d.kind==="file")return;
+    addTo(el,d.kind,d.text);};
+  es.onerror=()=>{es.close();mmDone();};
+});
+function mmDone(){$("mmGo").disabled=false;$("mmGo").textContent="Circlebackから取り込む";}
 
 const wd=["日","月","火","水","木","金","土"];
 $("today").textContent=`${TODAY.getFullYear()}/${TODAY.getMonth()+1}/${TODAY.getDate()}（${wd[TODAY.getDay()]}）`;
