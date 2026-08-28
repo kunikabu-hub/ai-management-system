@@ -1,5 +1,7 @@
 # MCP Configuration (contains API tokens)
 .mcp.json
+.mcp.json*
+*.mcp.json
 ~/.claude.json
 
 # Python
@@ -17,8 +19,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -70,3 +72,24 @@ ngrok.yml
 
 # Node modules (if any)
 node_modules/
+
+# ───── 顧客情報・生成物（GitHubに置かない）─────
+# 提案書は再生成できる成果物であり、客先の内部情報を含む。Google Driveが正。
+output/
+# 顧客ごとの内部資料（議事録分析・スケジュール・仕様）
+03_projects/
+04_content/
+05_learning/
+00_context/
+# デザインライブラリは本体。上の lib/ 除外に巻き込まれないよう明示
+!.claude/lib/
+!.claude/lib/**
+
+# Claude Code の個人設定（端末ごとに異なる）
+.claude/settings.local.json
+
+# バックアップ
+*.bak
+
+# macOS
+.DS_Store

@@ -1,0 +1,23 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "自分史を作りたいです"
+    },
+    {
+      "role": "assistant",
+      "content": "人生を3つの時期に分けるなら、どのように分けますか？"
+    },
+    {
+      "role": "user",
+      "content": "幼少期、学生時代、社会人時代の3つです"
+    },
+    {
+      "role": "assistant",
+      "content": "幼少期で一番覚えている出来事は何ですか？"
+    }
+  ],
+  "materials": null,
+  "story": null,
+  "picturebook": null
+}
