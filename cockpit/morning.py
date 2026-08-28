@@ -94,6 +94,61 @@ def name_of(frm):
     return n or frm.split("<")[-1].rstrip(">")
 
 
+# 相手からの「お礼・受領連絡」で会話が閉じているものは、返信不要として扱う。
+# 例:「請求書をご手配いただきありがとうございます。確かに頂戴いたしました。」
+_ACK = re.compile(
+    r"(確かに(拝受|受領|頂戴|受け取|入手)|(拝受|受領|落手)(いた)?しました"
+    r"|承知(いた)?しました|承知です|了解(いた)?しました|かしこまりました|承りました"
+    r"|ありがとうございました|(誠に|大変|どうも)?ありがとうございます"
+    r"|助かりました|御礼(申し上げます|まで)|お礼(申し上げます|まで)"
+    r"|(登録|手配|対応|確認)(させていただき|いたし)ます)")
+
+# 逆に、こちらへの依頼・質問が残っていれば未返信のまま。
+# 「ご返信いただきありがとうございます」を依頼と誤読しないよう、語尾まで見て判定する。
+_OPEN = re.compile(
+    r"([?？]"
+    r"|(ご確認|ご返信|ご連絡|ご教示|ご検討|ご対応|ご送付|ご提出|ご記入|ご選択|ご判断|ご調整|ご手配|ご共有|ご回答)"
+    r"\s*(のほど|いただけ|ください|下さい|願い|お待ち|くださいま)"
+    r"|(いただけますでしょうか|いただけますか|可能でしょうか|いかがでしょうか|よろしいでしょうか"
+    r"|お聞かせ|お知らせください|お待ちしております|ご都合|候補日|日程を)"
+    r"|(添付|送付|提出|回答)(をお願い|のお願い|いただ))")
+
+_QUOTE = re.compile(r"^\s*(>|＞|-{2,}\s*(Original|元の)|On .+ wrote:|20\d\d年.+日.+:)")
+
+
+def last_body(msg_id, maxlen=1800):
+    """メッセージ本文（text/plain）を引用部を除いて返す。判定を誤らないための確認用。"""
+    import base64
+    m = gget(f"https://www.googleapis.com/gmail/v1/users/me/messages/{msg_id}?format=full")
+    buf = []
+
+    def walk(part):
+        if part.get("mimeType") == "text/plain" and part.get("body", {}).get("data"):
+            buf.append(base64.urlsafe_b64decode(part["body"]["data"] + "==").decode("utf-8", "replace"))
+        for sub in part.get("parts", []) or []:
+            walk(sub)
+
+    walk(m.get("payload", {}))
+    text = "\n".join(buf) or (m.get("snippet") or "")
+    lines = []
+    for ln in text.splitlines():
+        if _QUOTE.match(ln):
+            break                       # 以降は引用。相手の依頼ではない
+        lines.append(ln)
+    return "\n".join(lines)[:maxlen]
+
+
+def conversation_closed(msg_id, snippet):
+    """お礼・受領連絡だけで、こちらへの宿題が残っていないか。"""
+    if not _ACK.search(snippet):
+        return False                    # 締めの言葉がなければ判定しない（本文を取りに行かない）
+    try:
+        body = last_body(msg_id)
+    except Exception:
+        body = snippet                  # 取れなければスニペットで判断する
+    return not _OPEN.search(body)
+
+
 def unreplied_mail(limit=6, days=10, scan=60):
     """受信トレイのうち、最後が相手からのまま返していないスレッド。
 
@@ -166,12 +221,9 @@ def unreplied_mail(limit=6, days=10, scan=60):
             age = (datetime.datetime.now() - datetime.datetime.fromtimestamp(ts)).days
             # 文脈がないと判断できないので、最後のメッセージの冒頭を添える
             snippet = (last.get("snippet") or "").replace("\u200c", "").strip()
-            # 相手が締めているだけのメールは返信不要とみなす
-            CLOSING = ("ありがとうございました", "承知しました", "承知いたしました",
-                       "了解しました", "かしこまりました", "引き続きよろしく",
-                       "よろしくお願いいたします。", "お世話になっております。")
-            body_short = snippet[:60]
-            if body_short and len(snippet) < 40 and any(k in snippet for k in CLOSING):
+            # お礼・受領連絡で会話が閉じているものは完了とみなす。
+            # スニペットは途中で切れるので、候補になったものだけ本文全体を確認する。
+            if conversation_closed(last["id"], snippet):
                 continue
             out.append((age, name_of(frm), subj, snippet[:70]))
         out.sort(key=lambda x: -x[0])

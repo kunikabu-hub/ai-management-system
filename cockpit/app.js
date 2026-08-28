@@ -277,13 +277,13 @@ function renderSns(){
     <b>下書き ${draft}件・承認済 ${ready}件。</b><br>
     AIは下書きまで。<b>承認はNotionで人が行う。</b>承認済のストックが3本を切ったら生成する。</div>`;
   return head+sec("SNS投稿キュー",sh.length,
-    "流入の主力はnote。人気記事のみXへ展開する。Xは火・木19〜20時、土日22〜23時が閲覧ピーク。",
+    "主戦場はFacebook。長文で書き、その一段落をXへ抜粋する。Xは火・木19〜20時、土日22〜23時が閲覧ピーク。",
     seg+`<div class="rows">${sh.map(x=>{
       const st=x["ステータス"], med=x["媒体"];
       const sv=st==="見送り"?"":st==="承認済"?"ok":st==="投稿済"?"ok":"warn";
       const memo=flat(x["承認者メモ"]||"");
       return row({sv,url:x.url,title:x["投稿文"],note:flat(x["本文"]),
-        meta:`<span class="pill ${med==="note"?"ok":med==="X"?"":"gold"}">${esc(med||"")}</span>`
+        meta:`<span class="pill ${med==="Facebook"?"ok":med==="X"?"":"gold"}">${esc(med||"")}</span>`
           +`<span class="pill ${st==="承認済"?"ok":st==="見送り"?"":"gold"}">${esc(st||"")}</span>`
           +(x["切り口"]?`<span>${esc(x["切り口"])}</span>`:"")
           +(memo?`<span class="pill wine">要修正</span>`:""),
