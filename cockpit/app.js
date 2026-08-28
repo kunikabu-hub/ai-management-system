@@ -239,6 +239,59 @@ function renderPrices(){
     ||'<tr><td colspan="9" class="sub">該当なし</td></tr>'}</tbody></table></div>`);
 }
 
+let ideaF="", snsF="";
+function renderIdeas(){
+  const all=D.ideas||[];
+  const KINDS=["企画アーカイブ","アイデア","課題"];
+  const seg=`<div class="segwrap">${[["","全部"],...KINDS.map(k=>[k,k])]
+    .map(x=>`<button class="use" data-ideaf="${esc(x[0])}" style="${ideaF===x[0]?"background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:590":""}">${x[1]} ${x[0]?all.filter(y=>y["種別"]===x[0]).length:all.length}</button>`).join("")}</div>`;
+  const sh=all.filter(x=>!ideaF||x["種別"]===ideaF);
+  const PRI={"高":0,"中":1,"低":2};
+  sh.sort((a,b)=>(PRI[a["優先度"]]??9)-(PRI[b["優先度"]]??9));
+  return sec("企画・アイデア・課題",sh.length,
+    "これまでの企画の型、まだ顧客に紐づかない構想、決めるべき未決事項。/shodan と /sns が素材にする。",
+    seg+`<div class="rows">${sh.map(x=>{
+      const k=x["種別"], pri=x["優先度"];
+      const sv=k==="課題"?(pri==="高"?"crit":"warn"):k==="アイデア"?"hold":"ok";
+      const learn=flat(x["学び・結果"]||x["概要"]||"");
+      return row({sv,url:x.url,title:x["タイトル"],note:learn,
+        meta:`<span class="pill ${k==="課題"?"wine":k==="アイデア"?"navy":"ok"}">${esc(k)}</span>`
+          +`<span class="pill">${esc(x["状態"]||"")}</span>`
+          +(x["商材"]?`<span>${esc(x["商材"])}</span>`:"")
+          +(x["SNS化"]===true||x["SNS化"]==="__YES__"?`<span class="pill gold">SNS素材</span>`:""),
+        side:(pri?`<span class="d ${pri==="高"?"crit":pri==="中"?"warn":"ok"}">優先${esc(pri)}</span>`:"")
+          +(x["date:期限:start"]?`<span class="due">${md(x["date:期限:start"])}</span>`:"")});
+    }).join("")}</div>`);
+}
+
+function renderSns(){
+  const all=D.sns||[];
+  const ST=["下書き","承認待ち","承認済","投稿済","見送り"];
+  const seg=`<div class="segwrap">${[["","全部"],...ST.map(k=>[k,k])]
+    .map(x=>`<button class="use" data-snsf="${esc(x[0])}" style="${snsF===x[0]?"background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:590":""}">${x[1]} ${x[0]?all.filter(y=>y["ステータス"]===x[0]).length:all.length}</button>`).join("")}</div>`;
+  const sh=all.filter(x=>!snsF||x["ステータス"]===snsF)
+    .sort((a,b)=>String(a["date:予定日:start"]||"").localeCompare(String(b["date:予定日:start"]||"")));
+  const draft=all.filter(x=>x["ステータス"]==="下書き").length;
+  const ready=all.filter(x=>x["ステータス"]==="承認済").length;
+  let head=`<div class="empty" style="border-left:3px solid var(--accent);margin-bottom:14px">
+    <b>下書き ${draft}件・承認済 ${ready}件。</b><br>
+    AIは下書きまで。<b>承認はNotionで人が行う。</b>承認済のストックが3本を切ったら生成する。</div>`;
+  return head+sec("SNS投稿キュー",sh.length,
+    "流入の主力はnote。人気記事のみXへ展開する。Xは火・木19〜20時、土日22〜23時が閲覧ピーク。",
+    seg+`<div class="rows">${sh.map(x=>{
+      const st=x["ステータス"], med=x["媒体"];
+      const sv=st==="見送り"?"":st==="承認済"?"ok":st==="投稿済"?"ok":"warn";
+      const memo=flat(x["承認者メモ"]||"");
+      return row({sv,url:x.url,title:x["投稿文"],note:flat(x["本文"]),
+        meta:`<span class="pill ${med==="note"?"ok":med==="X"?"":"gold"}">${esc(med||"")}</span>`
+          +`<span class="pill ${st==="承認済"?"ok":st==="見送り"?"":"gold"}">${esc(st||"")}</span>`
+          +(x["切り口"]?`<span>${esc(x["切り口"])}</span>`:"")
+          +(memo?`<span class="pill wine">要修正</span>`:""),
+        side:(x["date:予定日:start"]?`<span class="due">${md(x["date:予定日:start"])}</span>`:"")
+          +(x["投稿URL"]?`<span class="due">投稿済</span>`:"")});
+    }).join("")||'<div class="empty">該当なし</div>'}</div>`);
+}
+
 function renderKPI(){
   const act=D.deals.filter(d=>ACTIVE[d.stage]);
   const pipe=act.reduce((s,d)=>s+d.amount,0);
@@ -264,11 +317,16 @@ function render(){
   $("c-client").textContent=D.clients.length||"";
   $("c-ext").textContent=D.exts.filter(e=>e["ステータス"]!=="見送り").length||"";
   $("c-price").textContent=D.prices.length||"";
+  $("c-idea").textContent=D.ideas.length||"";
+  const dr=D.sns.filter(x=>x["ステータス"]==="下書き").length;
+  $("c-sns").textContent=dr||"";
   if(tab==="today")$("p-today").innerHTML=renderToday();
   if(tab==="pipe")$("p-pipe").innerHTML=renderPipe();
   if(tab==="client")$("p-client").innerHTML=renderClients();
   if(tab==="ext")$("p-ext").innerHTML=renderExts();
   if(tab==="price")$("p-price").innerHTML=renderPrices();
+  if(tab==="idea")$("p-idea").innerHTML=renderIdeas();
+  if(tab==="sns")$("p-sns").innerHTML=renderSns();
 }
 
 async function load(force){
@@ -277,7 +335,7 @@ async function load(force){
     const r=await fetch("/api/notion"+(force?"?force=1":""));
     const d=await r.json();
     if(d.error){$("dot").className="dot err";$("fresh").textContent=d.error;return;}
-    D={props:d.props||[],clients:d.clients||[],exts:d.exts||[],prices:d.prices||[]};
+    D={props:d.props||[],clients:d.clients||[],exts:d.exts||[],prices:d.prices||[],ideas:d.ideas||[],sns:d.sns||[]};
     D.deals=buildDeals(D.props);
     D.t=triage(D.deals,D.exts,D.clients);
     const age=Math.round((Date.now()/1000-d.at)/60);
@@ -288,7 +346,7 @@ async function load(force){
   }catch(e){$("dot").className="dot err";$("fresh").textContent="取得失敗";}
 }
 
-const TABS=["today","pipe","client","ext","price","make","mm"];
+const TABS=["today","pipe","client","ext","price","idea","sns","make","mm"];
 function go(t){
   tab=t;
   document.body.dataset.tab=t;      /* モバイルでKPIの出し分けに使う */
@@ -302,6 +360,10 @@ function go(t){
 $("nav").addEventListener("click",e=>{const b=e.target.closest("button[data-t]");if(b)go(b.dataset.t);});
 $("reload").addEventListener("click",()=>load(true));
 document.addEventListener("click",e=>{
+  const i2=e.target.closest("[data-ideaf]");
+  if(i2){ideaF=i2.getAttribute("data-ideaf");render();return;}
+  const s2=e.target.closest("[data-snsf]");
+  if(s2){snsF=s2.getAttribute("data-snsf");render();return;}
   const p2=e.target.closest("[data-pcf]");
   if(p2){pcf=p2.getAttribute("data-pcf");render();return;}
   const cf2=e.target.closest("[data-cf]");
@@ -378,6 +440,22 @@ $("mmGo").addEventListener("click",async()=>{
   es.onerror=()=>{es.close();mmDone();};
 });
 function mmDone(){$("mmGo").disabled=false;$("mmGo").textContent="Circlebackから取り込む";}
+
+$("snsGo").addEventListener("click",async()=>{
+  const el=$("mmLog");
+  $("snsGo").disabled=true;$("snsGo").textContent="生成中…";el.innerHTML="";
+  const res=await fetch("/run",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({mode:"sns",context:$("snsSpec").value})});
+  const j=await res.json();
+  if(j.error){addTo(el,"error",j.error);snsDone();return;}
+  const es=new EventSource("/stream/"+j.id);
+  es.onmessage=ev=>{const d=JSON.parse(ev.data);
+    if(d.kind==="end"){addTo(el,"meta","— "+d.text+" —");es.close();snsDone();load(true);return;}
+    if(d.kind==="file")return;
+    addTo(el,d.kind,d.text);};
+  es.onerror=()=>{es.close();snsDone();};
+});
+function snsDone(){$("snsGo").disabled=false;$("snsGo").textContent="SNS下書きをつくる";}
 
 const wd=["日","月","火","水","木","金","土"];
 $("today").textContent=`${TODAY.getFullYear()}/${TODAY.getMonth()+1}/${TODAY.getDate()}（${wd[TODAY.getDay()]}）`;

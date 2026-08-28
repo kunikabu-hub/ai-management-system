@@ -8,7 +8,7 @@
   python3 cockpit/morning.py          送信
   python3 cockpit/morning.py --dry    送らずに本文だけ表示
 """
-import datetime, json, os, sys, urllib.parse, urllib.request, urllib.error
+import datetime, json, os, re, sys, urllib.parse, urllib.request, urllib.error
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GDIR = os.path.expanduser("~/.config/claude-code/gdrive/")
@@ -116,6 +116,7 @@ def unreplied_mail(limit=6, days=10, scan=60):
                     "docusign.net", "calendly.com", "timerex.net")
     try:
         me = gget("https://www.googleapis.com/gmail/v1/users/me/profile")["emailAddress"].lower()
+        OURS = ("@ehon.inc", "@attadesign.co.jp")     # 社内の誰かが返していれば未返信ではない
         q = urllib.parse.quote(
             f"in:inbox -in:chats newer_than:{days}d -from:me "
             "-category:promotions -category:social -category:updates -category:forums")
@@ -124,7 +125,8 @@ def unreplied_mail(limit=6, days=10, scan=60):
         for th in lst.get("threads", []):
             d = gget("https://www.googleapis.com/gmail/v1/users/me/threads/"
                      f"{th['id']}?format=metadata&metadataHeaders=From&metadataHeaders=Subject"
-                     "&metadataHeaders=Date&metadataHeaders=List-Unsubscribe&metadataHeaders=Precedence")
+                     "&metadataHeaders=Date&metadataHeaders=List-Unsubscribe&metadataHeaders=Precedence"
+                     "&metadataHeaders=To&metadataHeaders=Cc")
             msgs = d.get("messages") or []
             if not msgs:
                 continue
@@ -132,8 +134,8 @@ def unreplied_mail(limit=6, days=10, scan=60):
             h = {x["name"].lower(): x["value"] for x in last["payload"].get("headers", [])}
             frm = h.get("from", "")
             low = frm.lower()
-            if me in low:
-                continue                                   # 最後が自分＝返信済み
+            if me in low or any(dm in low for dm in OURS):
+                continue                    # 最後が社内の誰か＝返信済み（スタッフが返した場合も含む）
             if "list-unsubscribe" in h:
                 continue                                   # 配信停止できる＝メルマガ
             if (h.get("precedence", "").lower() in ("bulk", "list", "auto_reply")):
@@ -142,6 +144,18 @@ def unreplied_mail(limit=6, days=10, scan=60):
                 continue
             if any(dm in low for dm in AUTO_DOMAINS):
                 continue
+            # 他スタッフ宛は出さない（本人が返すため）。2段で判定する。
+            #   1) To に自分がいない ＝ Cc止まり、または完全に他人宛
+            #   2) 本文の書き出しが他人への呼びかけ（「望月様」など）
+            to_ = h.get("to", "").lower()
+            cc_ = h.get("cc", "").lower()
+            if (to_ or cc_) and me not in to_:
+                continue                     # To に自分がいなければ自分の担当ではない
+            snip0 = (last.get("snippet") or "")[:40]
+            if re.search(r"[一-龥ぁ-んァ-ヶA-Za-z]{2,8}\s*(様|さん|殿)", snip0):
+                who = re.search(r"([一-龥ぁ-んァ-ヶA-Za-z]{2,8})\s*(様|さん|殿)", snip0).group(1)
+                if not any(k in who for k in ("国則", "國則", "くにのり", "Kuninori", "kunikabu")):
+                    continue                 # 冒頭が他人への呼びかけ＝その人の担当
             subj = h.get("subject", "(件名なし)")
             if any(k in subj for k in SUBJ_NG):
                 continue
@@ -150,11 +164,48 @@ def unreplied_mail(limit=6, days=10, scan=60):
                 continue
             ts = int(last.get("internalDate", 0)) / 1000
             age = (datetime.datetime.now() - datetime.datetime.fromtimestamp(ts)).days
-            out.append((age, name_of(frm), subj))
+            # 文脈がないと判断できないので、最後のメッセージの冒頭を添える
+            snippet = (last.get("snippet") or "").replace("\u200c", "").strip()
+            # 相手が締めているだけのメールは返信不要とみなす
+            CLOSING = ("ありがとうございました", "承知しました", "承知いたしました",
+                       "了解しました", "かしこまりました", "引き続きよろしく",
+                       "よろしくお願いいたします。", "お世話になっております。")
+            body_short = snippet[:60]
+            if body_short and len(snippet) < 40 and any(k in snippet for k in CLOSING):
+                continue
+            out.append((age, name_of(frm), subj, snippet[:70]))
         out.sort(key=lambda x: -x[0])
         return out[:limit], len(out), None
     except Exception as e:
         return [], 0, f"メール取得エラー（{type(e).__name__}）"
+
+
+def circleback_todos(limit=8):
+    """未完了のアクションアイテム。Circleback 上でチェックを付ければ翌回から消える。
+    Notion の議事録は「そのとき何が宿題だったか」の記録、こちらは「いま何が残っているか」。"""
+    key = secret("CIRCLEBACK_API_KEY")
+    if not key:
+        return [], 0, "Circlebackのキーが見つかりません"
+    try:
+        r = urllib.request.urlopen(urllib.request.Request(
+            "https://circleback.ai/api/action-items?limit=100",
+            headers={"Authorization": f"Bearer {key}"}), timeout=25)
+        items = json.load(r)
+        items = items if isinstance(items, list) else (items.get("data") or [])
+        out = []
+        for a in items:
+            if (a.get("status") or "").upper() != "PENDING":
+                continue
+            if a.get("completedAt"):
+                continue
+            who = ((a.get("assignee") or {}).get("email") or "").lower()
+            if who and not who.endswith(("@ehon.inc", "@attadesign.co.jp")):
+                continue                      # 先方の宿題は出さない
+            mt = (a.get("meetings") or [{}])[0]
+            out.append((a.get("title", ""), mt.get("name", "")))
+        return out[:limit], len(out), None
+    except Exception as e:
+        return [], 0, f"宿題の取得エラー（{type(e).__name__}）"
 
 
 # ---------- Notion ----------
@@ -264,31 +315,19 @@ def build(today, hour=None):
     else:
         L.append("  期限が近いものはありません")
 
-    # 3. 宿題（議事録の 宿題_自社）
-    todos = []
-    try:
-        for m in notion(DBS["minutes"], tok):
-            h = txt(m, "宿題_自社")
-            if not h.strip():
-                continue
-            d = txt(m, "日付")
-            age = (today - datetime.date.fromisoformat(d[:10])).days if d else None
-            title = txt(m, "タイトル").replace("（自動生成）", "")
-            for line in h.replace("<br>", "\n").split("\n"):
-                line = line.strip("・ ").strip()
-                if line:
-                    todos.append((age if age is not None else 999, line, title))
-    except Exception as ex:
-        notes.append(f"宿題の取得に失敗（{type(ex).__name__}）")
-    todos.sort(key=lambda x: -x[0])
+    # 3. 宿題（Circleback の未完了アクションアイテム）
+    todos, ttotal, terr = circleback_todos()
     L.append("\n▍こちらの宿題")
-    if todos:
-        for age, line, title in todos[:8]:
-            stale = f"（{age}日前・{title}）" if age >= IDLE_STALE else f"（{title}）"
-            L.append(f"  ・{line}")
-            L.append(f"      {stale}")
-        if len(todos) > 8:
-            L.append(f"  ほか{len(todos)-8}件")
+    if terr:
+        L.append(f"  {terr}")
+    elif todos:
+        for title, mtg in todos:
+            L.append(f"  ・{title}")
+            if mtg:
+                L.append(f"      （{mtg}）")
+        if ttotal > len(todos):
+            L.append(f"  ほか{ttotal-len(todos)}件")
+        L.append("  ※ Circleback でチェックを付けると消えます")
     else:
         L.append("  なし")
 
@@ -298,9 +337,11 @@ def build(today, hour=None):
     if merr:
         L.append(f"  {merr}")
     elif mails:
-        for age, name, subj in mails:
+        for age, name, subj, snip in mails:
             L.append(f"  ・{name}（{age}日前）")
             L.append(f"      {subj[:44]}")
+            if snip:
+                L.append(f"      « {snip} »")
         if total > len(mails):
             L.append(f"  ほか{total-len(mails)}件")
     else:

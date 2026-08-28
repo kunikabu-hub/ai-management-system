@@ -274,6 +274,8 @@ footer{margin-top:28px;padding-top:14px;border-top:.5px solid var(--sep);font-si
     <button data-t="client" data-short="顧客" aria-selected="false"><span class="lbl">顧客</span><span class="c" id="c-client"></span></button>
     <button data-t="ext" data-short="拡張" aria-selected="false"><span class="lbl">拡張案件</span><span class="c" id="c-ext"></span></button>
     <button data-t="price" data-short="単価" aria-selected="false"><span class="lbl">印刷単価</span><span class="c" id="c-price"></span></button>
+    <button data-t="idea" data-short="企画" aria-selected="false"><span class="lbl">企画・課題</span><span class="c" id="c-idea"></span></button>
+    <button data-t="sns" data-short="SNS" aria-selected="false"><span class="lbl">SNS投稿</span><span class="c" id="c-sns"></span></button>
     <span class="grp">つくる</span>
     <button data-t="make" data-short="つくる" aria-selected="false"><span class="lbl">提案書をつくる</span></button>
     <button data-t="mm" data-short="取込" aria-selected="false"><span class="lbl">議事録を取り込む</span></button>
@@ -295,6 +297,8 @@ footer{margin-top:28px;padding-top:14px;border-top:.5px solid var(--sep);font-si
   <section class="panel" id="p-client" hidden></section>
   <section class="panel" id="p-ext" hidden></section>
   <section class="panel" id="p-price" hidden></section>
+  <section class="panel" id="p-idea" hidden></section>
+  <section class="panel" id="p-sns" hidden></section>
   <section class="panel" id="p-mm" hidden>
     <div class="mk">
       <div class="box"><div class="top"></div><div class="in">
@@ -304,6 +308,15 @@ footer{margin-top:28px;padding-top:14px;border-top:.5px solid var(--sep);font-si
           「今週」「2026-08-25〜2026-08-28」「元気だ米」のような会議名でも指定できます。空欄なら直近7日間。
         </div>
         <button class="go" id="mmGo">Circlebackから取り込む</button>
+        <div style="margin-top:22px;padding-top:18px;border-top:.5px solid var(--sep)">
+          <label for="snsSpec">SNS下書きの本数・テーマ</label>
+          <input type="text" id="snsSpec" placeholder="note 3本 と X 5本" autocomplete="off">
+          <button class="go" id="snsGo" style="background:var(--navy)">SNS下書きをつくる</button>
+          <div class="hint">
+            企画・課題DBを素材に下書きを作り、SNS投稿タブに「下書き」で積みます。<br>
+            <b>投稿も承認もしません。</b>内容を読んでから、Notionで承認済に変えてください。
+          </div>
+        </div>
         <div class="hint">
           議事録DBへ登録し、未登録の相手をクライアントマスタに「相談レベル」で追加、
           関連する案件の次アクションに追記します。<br>
