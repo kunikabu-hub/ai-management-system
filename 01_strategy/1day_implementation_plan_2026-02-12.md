@@ -388,7 +388,7 @@ pip3 install google-generativeai tweepy google-auth google-auth-oauthlib google-
 
 ```bash
 # 作業ディレクトリに移動
-cd /Users/attadesign/Documents/ai-management-system
+cd /Users/attadesign/ai-management-system
 
 # ディレクトリ構造確認
 ls -la

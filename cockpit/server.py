@@ -12,6 +12,7 @@
 シェルを介さず argv で渡すのでコマンドインジェクションは起きない。
 """
 import json, os, queue, re, shutil, subprocess, threading, time, uuid, html
+import urllib.parse, urllib.request
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -111,34 +112,127 @@ def drive_dir():
     return found
 
 
+# 共有ドライブ「営業コックピット提案書」のフォルダID。
+# 同期フォルダが読めない環境（launchd 経由の起動など）では、こちらを使って
+# API で直接アップロードする。macOS は launchd から起動したプロセスに
+# ~/Library/CloudStorage への読み取りを許さないため、この経路が要る。
+DRIVE_FOLDER_ID = "10yyTJpoceDGz0g1g9uwJj1wtHgFEicOo"
+GDIR = os.path.expanduser("~/.config/claude-code/gdrive/")
+_gtok = {}
+
+
+def google_token():
+    if _gtok.get("v"):
+        return _gtok["v"]
+    t = json.load(open(GDIR + "token.json"))
+    c = json.load(open(GDIR + "credentials.json"))
+    c = c.get("installed") or c.get("web") or c
+    d = urllib.parse.urlencode({"client_id": c["client_id"], "client_secret": c["client_secret"],
+                                "refresh_token": t["refresh_token"],
+                                "grant_type": "refresh_token"}).encode()
+    _gtok["v"] = json.load(urllib.request.urlopen(
+        "https://oauth2.googleapis.com/token", data=d, timeout=20))["access_token"]
+    return _gtok["v"]
+
+
+def _drive_api(url, data=None, method=None, ctype="application/json"):
+    req = urllib.request.Request(url, data=data, method=method,
+                                 headers={"Authorization": "Bearer " + google_token(),
+                                          "Content-Type": ctype})
+    return json.load(urllib.request.urlopen(req, timeout=90))
+
+
+def _drive_find(name, parent):
+    q = ("name = '%s' and '%s' in parents and trashed = false"
+         % (name.replace("'", "\\'"), parent))
+    r = _drive_api("https://www.googleapis.com/drive/v3/files?"
+                   + urllib.parse.urlencode({"q": q, "fields": "files(id,name)",
+                                             "supportsAllDrives": "true",
+                                             "includeItemsFromAllDrives": "true"}))
+    f = r.get("files") or []
+    return f[0]["id"] if f else None
+
+
+def _drive_test_folder():
+    """テスト用サブフォルダ。なければ作る。"""
+    fid = _drive_find(DRIVE_TEST_SUB, DRIVE_FOLDER_ID)
+    if fid:
+        return fid
+    body = json.dumps({"name": DRIVE_TEST_SUB, "parents": [DRIVE_FOLDER_ID],
+                       "mimeType": "application/vnd.google-apps.folder"}).encode()
+    return _drive_api("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true",
+                      body, "POST")["id"]
+
+
+def _drive_upload(path, name, parent):
+    """同名があれば中身を差し替える。なければ新規作成する。同期フォルダへの
+    コピーと同じ挙動にするため、重複を作らない。"""
+    with open(path, "rb") as f:
+        blob = f.read()
+    existing = _drive_find(name, parent)
+    if existing:
+        _drive_api("https://www.googleapis.com/upload/drive/v3/files/%s"
+                   "?uploadType=media&supportsAllDrives=true" % existing,
+                   blob, "PATCH", "application/octet-stream")
+        return
+    bound = "----ehon" + str(int(time.time() * 1000))
+    meta = json.dumps({"name": name, "parents": [parent]}).encode()
+    body = (b"--" + bound.encode() + b"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
+            + meta + b"\r\n--" + bound.encode()
+            + b"\r\nContent-Type: application/octet-stream\r\n\r\n"
+            + blob + b"\r\n--" + bound.encode() + b"--\r\n")
+    _drive_api("https://www.googleapis.com/upload/drive/v3/files"
+               "?uploadType=multipart&supportsAllDrives=true",
+               body, "POST", "multipart/related; boundary=" + bound)
+
+
 def copy_to_drive(filenames, is_test):
-    """生成物を Drive にコピー。(成功したファイル名, 保存先の説明) を返す"""
-    dest_root = drive_dir()
-    if not dest_root:
+    """生成物を Drive へ。同期フォルダが見えればそこへコピーし、見えなければ
+    API で直接アップロードする。(成功したファイル名, 保存先の説明) を返す。"""
+    docs = [n for n in filenames
+            if n.lower().endswith((".pptx", ".pdf", ".docx"))   # 中間ファイルは出さない
+            and os.path.exists(os.path.join(OUTPUT, n))]
+    if not docs:
         return [], None
-    dest = os.path.join(dest_root, DRIVE_TEST_SUB) if is_test else dest_root
-    try:
-        os.makedirs(dest, exist_ok=True)
-    except OSError as e:
-        return [], f"Driveフォルダを作成できません（{e}）"
-    ok = []
-    for name in filenames:
-        if not name.lower().endswith((".pptx", ".pdf", ".docx")):
-            continue                      # 中間ファイル（json/py等）はDriveに出さない
-        src = os.path.join(OUTPUT, name)
-        if not os.path.exists(src):
-            continue
+
+    dest_root = drive_dir()
+    if dest_root:
+        dest = os.path.join(dest_root, DRIVE_TEST_SUB) if is_test else dest_root
         try:
-            shutil.copy2(src, os.path.join(dest, name))
+            os.makedirs(dest, exist_ok=True)
+        except OSError as e:
+            return [], f"Driveフォルダを作成できません（{e}）"
+        ok = []
+        for name in docs:
+            try:
+                shutil.copy2(os.path.join(OUTPUT, name), os.path.join(dest, name))
+                ok.append(name)
+            except OSError:
+                pass
+        if ok:
+            return ok, dest
+
+    # 同期フォルダが使えない場合の経路
+    try:
+        parent = _drive_test_folder() if is_test else DRIVE_FOLDER_ID
+    except Exception as e:
+        return [], f"Driveに接続できません（{type(e).__name__}）"
+    ok = []
+    for name in docs:
+        try:
+            _drive_upload(os.path.join(OUTPUT, name), name, parent)
             ok.append(name)
-        except OSError:
+        except Exception:
             pass
-    return ok, dest
+    if not ok:
+        return [], "Driveへのアップロードに失敗しました"
+    return ok, "営業コックピット提案書" + ("/テスト" if is_test else "") + "（API経由）"
 
 
 # ============ Notion 読み取り ============
 # 営業基盤は「えほんインク」ワークスペース側。ユーザー設定の token を使う。
 # 公開APIの入れ子構造を、ダッシュボードが期待する平坦な形に変換する。
+import urllib.parse
 import urllib.request
 
 DBS = {

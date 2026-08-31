@@ -17,7 +17,7 @@ Circleback AIからの議事録を自動的に受信・処理するためのセ�
 ### 1. 依存関係のインストール
 
 ```bash
-cd /Users/attadesign/Documents/ai-management-system
+cd /Users/attadesign/ai-management-system
 pip3 install -r requirements.txt
 ```
 

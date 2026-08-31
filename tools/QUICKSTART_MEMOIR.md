@@ -18,7 +18,7 @@ source ~/.bashrc
 ### 2. 依存関係をインストール
 
 ```bash
-cd /Users/attadesign/Documents/ai-management-system
+cd /Users/attadesign/ai-management-system
 pip install -r requirements.txt
 ```
 

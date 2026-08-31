@@ -455,7 +455,7 @@ def create_kanpo_form():
         print("\n※ フォームの共有設定は、Google Formsの画面で調整してください。")
 
         # URLをファイルに保存
-        output_file = "/Users/attadesign/Documents/ai-management-system/output/kanpo_form_urls.txt"
+        output_file = "/Users/attadesign/ai-management-system/output/kanpo_form_urls.txt"
         with open(output_file, 'w') as f:
             f.write(f"かんぽCX通信 絵本PoC評価アンケート\n")
             f.write(f"作成日時: {result.get('createTime', 'N/A')}\n\n")

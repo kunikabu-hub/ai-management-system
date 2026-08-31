@@ -40,7 +40,7 @@ npx -y mcp-google-drive
 トークンが無効になっている可能性があります：
 
 ```bash
-cd ~/Documents/ai-management-system
+cd ~/ai-management-system
 python3 get_google_drive_token.py
 ```
 

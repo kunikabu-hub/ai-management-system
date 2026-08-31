@@ -11,7 +11,7 @@
 ### ステップ1: 必要なライブラリをインストール
 
 ```bash
-cd ~/Documents/ai-management-system
+cd ~/ai-management-system
 pip3 install -r requirements.txt
 ```
 

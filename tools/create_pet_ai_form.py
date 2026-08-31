@@ -451,7 +451,7 @@ def create_pet_ai_form():
         print(f"回答URL: https://docs.google.com/forms/d/{form_id}/viewform")
 
         # URLをファイルに保存
-        output_file = "/Users/attadesign/Documents/ai-management-system/output/pet_ai_form_urls.txt"
+        output_file = "/Users/attadesign/ai-management-system/output/pet_ai_form_urls.txt"
         with open(output_file, 'w') as f:
             f.write(f"ペット写真×AI作品化サービスに関するアンケート\n")
             f.write(f"作成日時: {result.get('createTime', 'N/A')}\n\n")

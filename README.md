@@ -101,7 +101,7 @@ SSH接続を使用すると、毎回パスワードを入力する必要がな�
 既にHTTPSでクローンしている場合、SSHに切り替えることができます：
 
 ```bash
-cd ~/Documents/ai-management-system
+cd ~/ai-management-system
 git remote set-url origin git@github.com:kunikabu-hub/ai-management-system.git
 git remote -v  # 確認
 ```
