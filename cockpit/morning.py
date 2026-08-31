@@ -420,9 +420,56 @@ def send(text):
         return 1
 
 
+SLOTS = (8, 15, 20)
+STATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".sent-slots.json")
+
+
+def sent_today():
+    """今日すでに送った時刻スロット。Macが落ちていた分を送り直すために持つ。"""
+    try:
+        with open(STATE, encoding="utf-8") as f:
+            d = json.load(f)
+        return set(d.get(str(datetime.date.today()), []))
+    except Exception:
+        return set()
+
+
+def mark_sent(slots):
+    try:
+        with open(STATE, "w", encoding="utf-8") as f:
+            json.dump({str(datetime.date.today()): sorted(set(slots))}, f)
+    except Exception:
+        pass
+
+
+def nearest_slot(hour):
+    """いま実行された分がどのスロットか。時刻がずれても近いものに寄せる。"""
+    return min(SLOTS, key=lambda s: abs(s - hour))
+
+
 if __name__ == "__main__":
-    body = build(datetime.date.today())
+    today = datetime.date.today()
+    now_h = datetime.datetime.now().hour
+
+    if "--catchup" in sys.argv:
+        # 起動時に呼ばれる。Macが落ちていて送れなかった分だけを送る。
+        # 3回ぶん溜まっていても、まとめて最新の1通だけにする。
+        missed = [s for s in SLOTS if s <= now_h and s not in sent_today()]
+        if not missed:
+            sys.exit(0)                       # 送信済みか、まだ最初のスロット前
+        slot = missed[-1]
+        body = build(today, slot)
+        body += f"\n\n※ Macが起動していなかったため、{slot}時の通知が遅れて届いています。"
+        rc = send(body)
+        if rc == 0:
+            mark_sent(sent_today() | set(missed))
+        sys.exit(rc)
+
+    body = build(today)
     if "--dry" in sys.argv:
         print(body)
-    else:
-        sys.exit(send(body))
+        sys.exit(0)
+    rc = send(body)
+    if rc == 0:
+        mark_sent(sent_today() | {nearest_slot(now_h)})
+    sys.exit(rc)

@@ -7,6 +7,9 @@ DEST="$HOME/Library/Application Support/ehon-cockpit"
 mkdir -p "$DEST"
 cp "$(dirname "$0")/cockpit/morning.py" "$DEST/morning.py"
 echo "配置: $DEST/morning.py"
-launchctl bootout "gui/$(id -u)/inc.ehon.morning" 2>/dev/null || true
-launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/inc.ehon.morning.plist"
-echo "登録: inc.ehon.morning（毎朝8:00）"
+for L in inc.ehon.morning inc.ehon.morning.catchup; do
+  launchctl bootout "gui/$(id -u)/$L" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/$L.plist"
+done
+echo "登録: inc.ehon.morning（毎日 8:00 / 15:00 / 20:00・曜日指定なし＝土日も動く）"
+echo "登録: inc.ehon.morning.catchup（起動時。落ちていて送れなかった分を1通だけ送り直す）"
