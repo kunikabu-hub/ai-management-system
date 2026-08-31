@@ -36,7 +36,10 @@ function buildDeals(rows){
     if(due&&(!d.due||pd(due)<pd(d.due)))d.due=due;
     if(r["date:送付日:start"])d.sent=r["date:送付日:start"];
     if(r["date:再開予定:start"])d.resume=r["date:再開予定:start"];
-    if(r["納品状況"])d.delivery=r["納品状況"];
+    // 分割請求の2行で状況が違うときは、進んでいない方を案件の状況とする。
+    // 片方が制作中なら、その案件はまだ納品済ではない。
+    if(r["納品状況"]){const O=["未着手","制作中","継続納品中","納品済"];
+      if(!d.delivery||O.indexOf(r["納品状況"])<O.indexOf(d.delivery))d.delivery=r["納品状況"];}
     if((r["次アクション"]||"").length>d.next.length)d.next=r["次アクション"]||"";
   });
   return order;
@@ -136,13 +139,30 @@ function renderPipe(){
   D.deals.forEach(d=>{if(!by[d.stage])by[d.stage]={n:0,a:0};by[d.stage].n++;by[d.stage].a+=d.amount;});
   const mx=Math.max(...STAGES.map(s=>by[s].a),1);
   const col={"作成中":"var(--label3)","送付済":"var(--blue)","商談中":"var(--orange)","受注":"var(--green)","保留":"var(--accent)","失注":"rgba(120,120,128,.25)"};
+  // 受注のあとは「納品まで行ったか」で見る。ステージには納品済を置かない。
+  // 置くと受注から抜けてしまい、受注総額が実態より小さく出るため。
+  const won=D.deals.filter(d=>d.stage==="受注");
+  const dcount=k=>won.filter(d=>d.delivery===k).length;
+  const dsum=k=>won.filter(d=>d.delivery===k).reduce((t,d)=>t+d.amount,0);
+  const blank=won.filter(d=>!d.delivery);
+  const brk=[["納品済","ok"],["継続納品中","wine"],["制作中","navy"],["未着手","gold"]]
+    .filter(x=>dcount(x[0]))
+    .map(x=>`<span class="pill ${x[1]}">${x[0]} ${dcount(x[0])}件</span><span class="sub">${man(dsum(x[0]))}万</span>`)
+    .join('<span class="sub"> / </span>')
+    +(blank.length?`<span class="sub"> / </span><span class="pill gold">未記入 ${blank.length}件</span>`:"");
   let o=sec("ステージ別",null,"「保留」は時期の問題であって失注ではない。",
     `<div class="stages">${STAGES.map(s=>{const b=by[s],w=Math.max(b.a/mx*100,b.n?1.5:0);
       return `<div class="stage"><span class="nm">${s}</span><span class="tr"><span class="fl" style="width:${w.toFixed(1)}%;background:${col[s]}"></span></span>
-      <span class="nu"><b>${b.n}</b>件 ${b.a?man(b.a)+"万":"—"}</span></div>`;}).join("")}</div>`);
-  const sh=D.deals.filter(d=>pf==="active"?!!ACTIVE[d.stage]:pf==="won"?d.stage==="受注":pf==="cold"?(d.stage==="保留"||d.stage==="失注"):true)
+      <span class="nu"><b>${b.n}</b>件 ${b.a?man(b.a)+"万":"—"}</span></div>`;}).join("")}</div>
+     <div class="empty" style="margin-top:12px"><b>受注${won.length}件の納品状況</b><br>${brk||'<span class="sub">なし</span>'}</div>`);
+  const sh=D.deals.filter(d=>
+      pf==="active" ? !!ACTIVE[d.stage]
+    : pf==="making" ? (d.stage==="受注"&&d.delivery!=="納品済")
+    : pf==="done"   ? (d.stage==="受注"&&d.delivery==="納品済")
+    : pf==="cold"   ? (d.stage==="保留"||d.stage==="失注")
+    : true)
     .sort((a,b)=>{const i=STAGES.indexOf(a.stage)-STAGES.indexOf(b.stage);return i||(b.amount-a.amount);});
-  const seg=`<div class="segwrap">${[["active","進行中"],["won","受注"],["cold","保留・失注"],["all","全部"]]
+  const seg=`<div class="segwrap">${[["active","進行中"],["making","受注・制作中"],["done","納品済"],["cold","保留・失注"],["all","全部"]]
     .map(x=>`<button class="use" data-pf="${x[0]}" style="${pf===x[0]?"background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:590":""}">${x[1]}</button>`).join("")}</div>`;
   o+=sec("案件一覧",sh.length,"着手金と残金の2行は1案件として統合。粗利は原価が入っている案件のみ実額。",
     seg+`<div class="tw"><table><thead><tr><th>提案</th><th>クライアント</th><th>ステージ</th><th class="n">金額</th><th class="n">粗利</th><th>納品状況</th><th class="n">期日</th></tr></thead><tbody>${
