@@ -15,6 +15,15 @@ const blank = v => {const s=String(v==null?"":v).trim();return !s||/^[（(]\s*�
 const rel = v => {try{const a=JSON.parse(v||"[]");return Array.isArray(a)?a:[];}catch(e){return[];}};
 const base = t => String(t||"").replace(/[（(]\s*(着手金|残金)\s*[)）]\s*$/,"").trim();
 
+/* えほんインクの決算月は1月。期は2月1日に始まり、翌年1月31日に終わる。
+   受注は「発行日」で期に割り振る。着手金と残金が期をまたぐことがあるため、
+   案件単位ではなく請求行単位で数える。 */
+const FY_M=2;
+function fyOf(d){return d?(d.getMonth()+1>=FY_M?d.getFullYear():d.getFullYear()-1):null;}
+function fyLabel(y){return y+"/2〜"+(y+1)+"/1";}
+function wonInFY(rows,y){
+  return rows.filter(r=>r["ステージ"]==="受注"&&fyOf(pd(r["date:発行日:start"]))===y);
+}
 const STAGES=["作成中","送付済","商談中","受注","保留","失注"];
 const ACTIVE={"作成中":1,"送付済":1,"商談中":1};
 const IDLE=90;
@@ -318,10 +327,22 @@ function renderKPI(){
   const hold=D.deals.filter(d=>d.stage==="保留");
   const ha=hold.reduce((s,d)=>s+d.amount,0);
   const won=D.deals.filter(d=>d.stage==="受注").reduce((s,d)=>s+d.amount,0);
+  const fy=fyOf(new Date());
+  const cur=wonInFY(D.props,fy), prev=wonInFY(D.props,fy-1);
+  const sum=rs=>rs.reduce((s,r)=>s+(typeof r["金額"]==="number"?r["金額"]:0),0);
+  const curA=sum(cur);
+  // 前期は通年ではなく「同じ月日まで」で比べる。期の途中を通年と比べると必ず負ける。
+  const cut=new Date();cut.setFullYear(cut.getFullYear()-1);
+  const prevTD=sum(prev.filter(r=>pd(r["date:発行日:start"])<=cut));
+  const noDate=D.props.filter(r=>r["ステージ"]==="受注"&&!r["date:発行日:start"]).length;
   const need=D.t.overdue.length+D.t.soon.length;
   const cards=[
     {l:"アクティブ案件",v:act.length,u:"件",n:"作成中・送付済・商談中"},
-    {l:"進行中の総額",v:man(pipe),u:"万円",n:`受注済 ${man(won)}万円は含まない`},
+    {l:`今期の受注（${fyLabel(fy)}）`,v:man(curA),u:"万円",
+     n:`前期同期 ${man(prevTD)}万円`+(prevTD?`（${curA>=prevTD?"+":""}${Math.round((curA/prevTD-1)*100)}%）`:"")
+       +` ／ 前期通年 ${man(sum(prev))}万円`
+       +(noDate?` ／ 発行日なし ${noDate}行`:"")},
+    {l:"進行中の総額",v:man(pipe),u:"万円",n:`受注済（通算 ${man(won)}万円）は含まない`},
     {l:"粗利見込み（参考）",v:man(pipe*0.67),u:"万円",n:"限界利益率67%の仮置き。実額ではない"},
     {l:"保留＝来期見込み",v:man(ha),u:"万円",n:`${hold.length}件。失注ではなく時期の問題`+(D.t.resuming.length?` ／ 再開時期 ${D.t.resuming.length}件`:"")},
     {l:"要対応",v:need,u:"件",n:`期日超過 ${D.t.overdue.length}件・3日以内 ${D.t.soon.length}件`,c:D.t.overdue.length?"crit":""}];
