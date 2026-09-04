@@ -251,10 +251,51 @@ function renderPrices(){
     <button class="use" data-pcf="" style="${pcf===""?"background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:590":""}">全部 ${rows.length}</button>
     ${makers.map(m=>`<button class="use" data-pcf="${esc(m)}" style="${pcf===m?"background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.14);font-weight:590":""}">${esc(m)} ${rows.filter(r=>(r["印刷会社"]||"—")===m).length}</button>`).join("")}</div>`;
   const sh=rows.filter(r=>!pcf||(r["印刷会社"]||"—")===pcf)
-    .sort((a,b)=>(a["印刷会社"]||"").localeCompare(b["印刷会社"]||"")
-      ||String(a["サイズ"]||"").localeCompare(String(b["サイズ"]||""))
-      ||(a["ページ数"]||0)-(b["ページ数"]||0)||(a["部数"]||0)-(b["部数"]||0));
-  return sec("印刷単価マスタ",sh.length,
+    // 鮮度がいちばん効くので見積日の新しい順。同日なら仕様→部数の順。
+    .sort((a,b)=>String(b["date:見積日:start"]||"").localeCompare(String(a["date:見積日:start"]||""))
+      ||String(a["製本方式"]||"").localeCompare(String(b["製本方式"]||""))
+      ||(a["部数"]||0)-(b["部数"]||0));
+
+  /* 仕様（会社×サイズ×ページ数×本文用紙）ごとに、製本方式×部数の単価表を作る。
+     方式を選ぶときは同じ部数で横に並べないと比べられない。 */
+  const G={};
+  sh.forEach(r=>{
+    const k=[r["印刷会社"]||"—",r["サイズ"]||"—",(r["ページ数"]??"—")+"P",r["本文用紙"]||"—"].join(" / ");
+    (G[k]=G[k]||[]).push(r);
+  });
+  const newest=rs=>rs.reduce((t,r)=>{const d=r["date:見積日:start"]||"";return d>t?d:t;},"");
+  const cmp=Object.entries(G)
+    .filter(([,rs])=>rs.length>1)
+    .sort((a,b)=>newest(b[1]).localeCompare(newest(a[1])))
+    .map(([k,rs])=>{
+      const top=newest(rs);          // この仕様グループでいちばん新しい見積日
+      const qty=[...new Set(rs.map(r=>r["部数"]).filter(v=>v!=null))].sort((a,b)=>a-b);
+      const bind=[...new Set(rs.map(r=>r["製本方式"]||"—"))];
+      const at={};rs.forEach(r=>{at[(r["製本方式"]||"—")+"@"+r["部数"]]=r;});
+      // 部数ごとの最安を太字にする
+      const min={};qty.forEach(q=>{
+        const v=bind.map(b=>at[b+"@"+q]).filter(Boolean).map(r=>r["1部単価"]).filter(v=>v!=null);
+        if(v.length>1)min[q]=Math.min(...v);});
+      return `<div style="margin-bottom:18px">
+        <div class="sub" style="font-weight:590;margin-bottom:6px">${esc(k)}</div>
+        <div class="tw"><table><thead><tr><th>製本方式</th>${qty.map(q=>`<th class="n">${q.toLocaleString("ja-JP")}部</th>`).join("")}<th class="n">見積日</th></tr></thead><tbody>
+        ${bind.map(b=>{
+          const mine=rs.filter(r=>(r["製本方式"]||"—")===b);
+          return `<tr><td>${esc(b)}</td>${qty.map(q=>{const r=at[b+"@"+q];
+            if(!r||r["1部単価"]==null)return '<td class="n sub">—</td>';
+            const lo=min[q]===r["1部単価"];
+            const d=r["date:見積日:start"]||"";
+            // 見積日が揃っていない表で新旧を混ぜて比べると判断を誤る。古いものは日付を出す。
+            const old=d&&d<top;
+            return `<td class="n">${lo?"<b>":""}¥${r["1部単価"].toLocaleString("ja-JP")}${lo?"</b>":""}
+              ${old?`<div class="sub">${md(d)}</div>`:""}</td>`;}).join("")}
+            <td class="n sub">${md(newest(mine))||"—"}</td></tr>`;}).join("")}
+        </tbody></table></div></div>`;}).join("");
+
+  return sec("仕様別の比較",Object.keys(G).filter(k=>G[k].length>1).length,
+    "同じ部数で横に並べないと製本方式は比べられない。太字はその部数での最安、単価は税別。日付が付いている単価は古い見積もりなので、そのまま比べない。",
+    cmp||'<div class="empty">比較できる組がありません</div>')
+   +sec("印刷単価マスタ",sh.length,
     "同一仕様（印刷会社×サイズ×ページ数×製本方式×本文用紙×部数）は最新見積1行だけを持つ運用。見積日を見て鮮度を判断する。",
     seg+`<div class="tw"><table><thead><tr><th>印刷会社</th><th>サイズ</th><th class="n">P</th><th>製本方式</th><th>本文用紙</th><th class="n">部数</th><th class="n">1部単価</th><th class="n">見積日</th><th>備考</th></tr></thead><tbody>${
     sh.map(r=>{const q=dd(r["date:見積日:start"]);const age=q!=null?-q:null;
