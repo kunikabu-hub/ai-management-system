@@ -295,18 +295,43 @@ function renderPrices(){
   return sec("仕様別の比較",Object.keys(G).filter(k=>G[k].length>1).length,
     "同じ部数で横に並べないと製本方式は比べられない。太字はその部数での最安、単価は税別。日付が付いている単価は古い見積もりなので、そのまま比べない。",
     cmp||'<div class="empty">比較できる組がありません</div>')
-   +sec("印刷単価マスタ",sh.length,
-    "同一仕様（印刷会社×サイズ×ページ数×製本方式×本文用紙×部数）は最新見積1行だけを持つ運用。見積日を見て鮮度を判断する。",
-    seg+`<div class="tw"><table><thead><tr><th>印刷会社</th><th>サイズ</th><th class="n">P</th><th>製本方式</th><th>本文用紙</th><th class="n">部数</th><th class="n">1部単価</th><th class="n">見積日</th><th>備考</th></tr></thead><tbody>${
-    sh.map(r=>{const q=dd(r["date:見積日:start"]);const age=q!=null?-q:null;
-      return `<tr><td><a class="nm" href="${esc(r.url)}" target="_blank">${esc(r["印刷会社"]||"—")}</a></td>
-      <td>${esc(r["サイズ"]||"")}</td><td class="n">${r["ページ数"]!=null?r["ページ数"]:"—"}</td>
-      <td>${esc(r["製本方式"]||"")}</td><td>${esc(r["本文用紙"]||"")}</td>
-      <td class="n">${r["部数"]!=null?r["部数"].toLocaleString("ja-JP"):"—"}</td>
-      <td class="n"><b>${r["1部単価"]!=null?"¥"+r["1部単価"].toLocaleString("ja-JP"):"—"}</b></td>
-      <td class="n">${r["date:見積日:start"]?ymd(r["date:見積日:start"])+`<div class="sub">${age}日前</div>`:'<span class="sub">—</span>'}</td>
-      <td class="sub" style="max-width:250px">${esc(flat(r["備考"]).slice(0,60))}</td></tr>`;}).join("")
-    ||'<tr><td colspan="9" class="sub">該当なし</td></tr>'}</tbody></table></div>`);
+
+  /* 一覧は「見積書1本」を1枚のカードにする。会社・仕様・製本方式・見積日が
+     同じ行は、もとは1枚の見積書に並んでいた部数違い。行で持つと同じ値が
+     何度も出て読めないので、束ね直して部数と単価だけを縦に並べる。 */
+  +(()=>{
+    const subOf=t=>{const m=/小計\s*([\d,]+)\s*円/.exec(flat(t||""));return m?m[1]:null;};
+    const noteOf=t=>flat(t||"").replace(/小計\s*[\d,]+\s*円(（[^）]*）)?。?/,"").trim();
+    const Q={};
+    sh.forEach(r=>{
+      const k=[r["印刷会社"]||"—",r["サイズ"]||"—",r["ページ数"]??"—",r["本文用紙"]||"—",
+               r["製本方式"]||"—",r["date:見積日:start"]||""].join("\u0001");
+      (Q[k]=Q[k]||[]).push(r);
+    });
+    const cards=Object.entries(Q)
+      .sort((a,b)=>String(b[0].split("\u0001")[5]).localeCompare(String(a[0].split("\u0001")[5])))
+      .map(([k,rs])=>{
+        const [maker,size,pg,paper,bind,date]=k.split("\u0001");
+        const q=dd(date), age=q!=null?-q:null;
+        rs.sort((a,b)=>(a["部数"]||0)-(b["部数"]||0));
+        // 束の中で備考が違うことがある（100部と101部で条件が違う等）。
+        // 先頭だけ出すと情報が落ちるので、重複を除いて全部つなぐ。
+        const note=[...new Set(rs.map(r=>noteOf(r["備考"])).filter(Boolean))].join("　／　");
+        return `<div class="qc">
+          <h4>${esc(maker)}<span class="pill">${esc(bind)}</span>
+            <span class="d">${date?ymd(date)+(age!=null?` ・ ${age}日前`:""):"見積日なし"}</span></h4>
+          <div class="spec">${esc(size)}　${pg!=="—"?pg+"ページ":""}　${esc(paper)}</div>
+          <div class="lad">${rs.map(r=>{const sub=subOf(r["備考"]);
+            return `<span class="q"><a href="${esc(r.url)}" target="_blank">${
+              r["部数"]!=null?r["部数"].toLocaleString("ja-JP")+"部":"部数なし"}</a></span>
+            <span class="u">${r["1部単価"]!=null?"¥"+r["1部単価"].toLocaleString("ja-JP"):"—"}</span>
+            <span class="s">${sub?sub+"円":""}</span>`;}).join("")}</div>
+          ${note?`<div class="nt">${esc(note)}</div>`:""}
+        </div>`;}).join("");
+    return sec("印刷単価マスタ",sh.length,
+      "1枚＝1本の見積もり。新しい順に並ぶ。単価は税別で、右は小計。部数をクリックするとNotionが開く。",
+      `<div class="qcs">${cards||'<div class="empty">該当なし</div>'}</div>`);
+  })();
 }
 
 let ideaF="", snsF="";
